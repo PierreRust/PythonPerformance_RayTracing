@@ -9,6 +9,7 @@ from time import sleep
 
 from PIL import Image
 from typing import Tuple, Optional
+from multiprocessing import Pool
 
 from raytracer.vector import Vector3
 
@@ -436,10 +437,11 @@ class PngScreen(Screen):
 
 
 def cast_ray_for_pixel(args):
-    camera, scene, row, col = args
+    camera, scene, row, col, direct_draw = args
     ray = camera.ray_for_pixel(row, col)
     color = scene.cast_ray(ray)
-    camera.screen.draw_pixel(row, col, color)
+    if direct_draw:
+        camera.screen.draw_pixel(row, col, color)
     return color
 
 
@@ -473,8 +475,6 @@ class Camera:
             2 * self.screen_distance
         )
         self.screen_3d_height = self.screen_3d_width / screen.ratio
-        self.pixel_with = self.screen_3d_width / self.screen.width
-        self.pixel_height = self.screen_3d_height / self.screen.height
 
         # Compute bottom left point of the view, in 3D space:
         screen_center = self.position - (self.n * self.screen_distance)
@@ -491,7 +491,17 @@ class Camera:
             # Parallel pixels generation, with threads:
             with ThreadPoolExecutor() as executor:
                 for r, c in self.screen.pixels():
-                    executor.submit(cast_ray_for_pixel, (self, scene, r, c))
+                    executor.submit(cast_ray_for_pixel, (self, scene, r, c, True))
+        elif parallel.startswith("process"):
+            # multiprocess generation
+            with Pool() as pool:
+                colors = pool.map(
+                    cast_ray_for_pixel,
+                    [(self, scene, r, c, False) for r, c in self.screen.pixels()],
+                    chunksize=int(self.screen.height * self.screen.width / 4),
+                )
+            for (r, c), color in zip(self.screen.pixels(), colors):
+                self.screen.draw_pixel(r, c, color)
         else:
             # Sequential generation of pixels:
             for row, col in self.screen.pixels():
@@ -543,7 +553,7 @@ def parse_args():
         "--parallel",
         "-p",
         type=str,
-        choices=["sequential", "threads", "threads-io"],
+        choices=["sequential", "threads", "threads-io", "process"],
         help="Parallel generation mode: sequential or threads",
         default="sequential",
     )
