@@ -1,0 +1,501 @@
+
+surfaces:
+  ground_surface:
+    color: [200,200,200]
+    ka: [0.2, 0.2, 0.2]
+    kd: [0.4, 0.4, 0.4]
+    ks: [0.5, 0.5, 0.5]
+    mirror_reflection: [0.1, 0.1, 0.1]
+  transparent:
+    diffuse: False
+    color: [20, 120, 20]
+    # ka: [0, 0, 0]
+    # kd: [0, 0, 0]
+    # ks: [1.5, 1.5, 1.5]
+    kr: 2.5
+  mirror:
+    diffuse: True
+    color: [20, 120, 150]
+    ka: [0.5, 0.5, 0.5]
+    kd: [0.5, 0.5, 0.5]
+    # ks: [0.5, 0.5, 0.5]
+    ks: [1.2, 1.2, 1.2]
+    mirror_reflection: [0.9, 0.9, 0.9]
+  mirror2:
+    diffuse: True
+    color: [20, 120, 150]
+    ka: [0.5, 0.5, 0.5]
+    kd: [0.7, 0.7, 0.7]
+    # ks: [0.5, 0.5, 0.5]
+    ks: [1.2, 1.2, 1.2]
+    mirror_reflection: [0.3, 0.3, 0.3]
+
+  violet0:
+    color: [148,0, 211]
+    ka: [0.1, 0.1, 0.1]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.7, 0.7, 0.7]
+  violet1:
+    color: [148,0, 211]
+    ka: [0.3, 0.3, 0.3]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.3, 0.3, 0.3]
+  violet2:
+    color: [148,0, 211]
+    alpha: 32
+  violet3:
+    color: [148,0, 211]
+    ka: [0.3, 0.3, 0.3]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.3, 0.3, 0.3]
+  violet4:
+    color: [148,0, 211]
+    ka: [0.1, 0.1, 0.1]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.7, 0.7, 0.7]
+
+  indigo0:
+    color: [75, 0, 130]
+    ka: [0.1, 0.1, 0.1]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.7, 0.7, 0.7]
+  indigo1:
+    color: [75, 0, 130]
+    ka: [0.3, 0.3, 0.3]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.3, 0.3, 0.3]
+  indigo2:
+    color: [75, 0, 130]
+    alpha: 32
+  indigo3:
+    color: [75, 0, 130]
+    ka: [0.3, 0.3, 0.3]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.3, 0.3, 0.3]
+  indigo4:
+    color: [75, 0, 130]
+    ka: [0.1, 0.1, 0.1]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.7, 0.7, 0.7]
+
+  blue0:
+    color: [0, 0, 255]
+    ka: [0.1, 0.1, 0.1]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.7, 0.7, 0.7]
+  blue1:
+    color: [0, 0, 255]
+    ka: [0.3, 0.3, 0.3]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.3, 0.3, 0.3]
+  blue2:
+    color: [0, 0, 255]
+    alpha: 64
+  blue3:
+    color: [0, 0, 255]
+    ka: [0.3, 0.3, 0.3]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.3, 0.3, 0.3]
+  blue4:
+    color: [0, 0, 255]
+    ka: [0.1, 0.1, 0.1]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.7, 0.7, 0.7]
+
+  green0:
+    color: [0, 255, 0]
+    ka: [0.1, 0.1, 0.1]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.7, 0.7, 0.7]
+  green1:
+    color: [0, 255, 0]
+    ka: [0.3, 0.3, 0.3]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.3, 0.3, 0.3]
+  green2:
+    color: [0, 255, 0]
+    alpha: 32
+  green3:
+    color: [0, 255, 0]
+    ka: [0.3, 0.3, 0.3]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.3, 0.3, 0.3]
+  green4:
+    color: [0, 255, 0]
+    ka: [0.1, 0.1, 0.1]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.7, 0.7, 0.7]
+
+
+  yellow0:
+    color: [255, 255, 0]
+    ka: [0.1, 0.1, 0.1]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.7, 0.7, 0.7]
+  yellow1:
+    color: [255, 255, 0]
+    ka: [0.3, 0.3, 0.3]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.3, 0.3, 0.3]
+  yellow2:
+    color: [255, 255, 0]
+    alpha: 32
+  yellow3:
+    color: [255, 255, 0]
+    ka: [0.3, 0.3, 0.3]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.3, 0.3, 0.3]
+  yellow4:
+    color: [255, 255, 0]
+    ka: [0.1, 0.1, 0.1]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.7, 0.7, 0.7]
+
+  orange0:
+    color: [255, 127, 0]
+    ka: [0.1, 0.1, 0.1]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.7, 0.7, 0.7]
+  orange1:
+    color: [255, 127, 0]
+    ka: [0.3, 0.3, 0.3]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    mirror_reflection: [0.3, 0.3, 0.3]
+    alpha: 32
+  orange2:
+    color: [255, 127, 0]
+    alpha: 32
+  orange3:
+    color: [255, 127, 0]
+    ka: [0.3, 0.3, 0.3]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.3, 0.3, 0.3]
+  orange4:
+    color: [255, 127, 0]
+    ka: [0.1, 0.1, 0.1]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.7, 0.7, 0.7]
+
+  red0:
+    color: [255, 0 , 0]
+    ka: [0.1, 0.1, 0.1]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.7, 0.7, 0.7]
+  red1:
+    color: [255, 0 , 0]
+    ka: [0.3, 0.3, 0.3]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.3, 0.3, 0.3]
+  red2:
+    color: [255, 0 , 0]
+    alpha: 32
+  red3:
+    color: [255, 0 , 0]
+    ka: [0.3, 0.3, 0.3]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.3, 0.3, 0.3]
+  red4:
+    color: [255, 0 , 0]
+    ka: [0.1, 0.1, 0.1]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.7, 0.7, 0.7]
+
+objects:
+  sphere_transparent:
+    type: sphere
+    position: [50, 16, -24]
+    radius: 8
+    surface: transparent
+
+  sphere_transparent2:
+    type: sphere
+    position: [60, -14, 22]
+    radius: 10
+    surface: transparent
+
+
+  sphere_mirror:
+    type: sphere
+    position: [50, 16, 24]
+    radius: 8
+    surface: mirror
+
+  sphere_mirror2:
+    type: sphere
+    position: [50, -20, -30]
+    radius: 12
+    surface: mirror
+
+#  sphere_mirror_back:
+#    type: sphere
+#    position: [150, 0, 0]
+#    radius: 50
+#    surface: mirror2
+
+  sphere_0_0:
+    type: sphere
+    position: [80, 30, -42]
+    radius: 6
+    surface: violet0
+  sphere_0_1:
+    type: sphere
+    position: [80, 16, -42]
+    radius: 6
+    surface: violet1
+  sphere_0_2:
+    type: sphere
+    position: [80, 2, -42]
+    radius: 6
+    surface: violet2
+  sphere_0_3:
+    type: sphere
+    position: [80, -12, -42]
+    radius: 6
+    surface: violet3
+  sphere_0_4:
+    type: sphere
+    position: [80, -26, -42]
+    radius: 6
+    surface: violet4
+
+  sphere_1_0:
+    type: sphere
+    position: [80, 30, -28]
+    radius: 6
+    surface: indigo0
+  sphere_1_1:
+    type: sphere
+    position: [80, 16, -28]
+    radius: 6
+    surface: indigo1
+  sphere_1_2:
+    type: sphere
+    position: [80, 2, -28]
+    radius: 6
+    surface: indigo2
+  sphere_1_3:
+    type: sphere
+    position: [80, -12, -28]
+    radius: 6
+    surface: indigo3
+  sphere_1_4:
+    type: sphere
+    position: [80, -26, -28]
+    radius: 6
+    surface: indigo4
+
+  sphere_2_0:
+    type: sphere
+    position: [80, 30, -14]
+    radius: 6
+    surface: blue0
+  sphere_2_1:
+    type: sphere
+    position: [80, 16, -14]
+    radius: 6
+    surface: blue1
+  sphere_2_2:
+    type: sphere
+    position: [80, 2, -14]
+    radius: 6
+    surface: blue2
+  sphere_2_3:
+    type: sphere
+    position: [80, -12, -14]
+    radius: 6
+    surface: blue3
+  sphere_2_4:
+    type: sphere
+    position: [80, -26, -14]
+    radius: 6
+    surface: blue4
+
+  sphere_3_0:
+    type: sphere
+    position: [80, 30, 0]
+    radius: 6
+    surface: green0
+  sphere_3_1:
+    type: sphere
+    position: [80, 16, 0]
+    radius: 6
+    surface: green1
+  sphere_3_2:
+    type: sphere
+    position: [80, 2, 0]
+    radius: 6
+    surface: green2
+  sphere_3_3:
+    type: sphere
+    position: [80, -12, 0]
+    radius: 6
+    surface: green3
+  sphere_3_4:
+    type: sphere
+    position: [80, -26, 0]
+    radius: 6
+    surface: green4
+
+  sphere_4_0:
+    type: sphere
+    position: [80, 30, 14]
+    radius: 6
+    surface: yellow0
+  sphere_4_1:
+    type: sphere
+    position: [80, 16, 14]
+    radius: 6
+    surface: yellow1
+  sphere_4_2:
+    type: sphere
+    position: [80, 2, 14]
+    radius: 6
+    surface: yellow2
+  sphere_4_3:
+    type: sphere
+    position: [80, -12, 14]
+    radius: 6
+    surface: yellow3
+  sphere_4_4:
+    type: sphere
+    position: [80, -26, 14]
+    radius: 6
+    surface: yellow4
+
+  sphere_5_0:
+    type: sphere
+    position: [80, 30, 28]
+    radius: 6
+    surface: orange0
+  sphere_5_1:
+    type: sphere
+    position: [80, 16, 28]
+    radius: 6
+    surface: orange1
+  sphere_5_2:
+    type: sphere
+    position: [80, 2, 28]
+    radius: 6
+    surface: orange2
+  sphere_5_3:
+    type: sphere
+    position: [80, -12, 28]
+    radius: 6
+    surface: orange3
+  sphere_5_4:
+    type: sphere
+    position: [80, -26, 28]
+    radius: 6
+    surface: orange4
+
+  sphere_6_0:
+    type: sphere
+    position: [80, 30, 42]
+    radius: 6
+    surface: red0
+  sphere_6_1:
+    type: sphere
+    position: [80, 16, 42]
+    radius: 6
+    surface: red1
+  sphere_6_2:
+    type: sphere
+    position: [80, 2, 42]
+    radius: 6
+    surface: red2
+  sphere_6_3:
+    type: sphere
+    position: [80, -12, 42]
+    radius: 6
+    surface: red3
+  sphere_6_4:
+    type: sphere
+    position: [80, -26, 42]
+    radius: 6
+    surface: red4
+
+#
+#  ground:
+#    type: plane
+#    point: [0,0,0]
+#    normal: [0,1,0]
+#    surface: ground_surface
+
+lights:
+  l1:
+    position: [70, 80, -15]
+    power: [3000, 3000, 3000]
+
+  l2:
+    position: [00, 50, 15]
+    power: [3000, 3000, 0000]
+
+  l3:
+    position: [0, -50, 0]
+    power: [3000, 3000, 3000]
+
+
+camera:
+  position: [8, 2, 0]
+  direction: [1, 0, 0]
+  up: [1, 1, 0]
+  screen_distance: 10
+
+scene:
+  ambient_light: [0.6, 0.6, 0.6]
+  background: [87, 178, 227]
