@@ -45,15 +45,15 @@ camera:
     assert len(scene.objects) == 1
     assert isinstance(scene.objects[0], Sphere)
     assert scene.objects[0].radius == 5
-    assert scene.objects[0].position == Vector3(10, 10, 10)
+    assert scene.objects[0].position == (10, 10, 10)
 
     assert scene.objects[0].surface.diffuse
     assert not scene.objects[0].surface.mirror_reflection
     assert not scene.objects[0].surface.kr
-    assert scene.objects[0].surface.ka == Vector3(0.1, 0.2, 0.3)
-    assert scene.objects[0].surface.kd == Vector3(0.4, 0.5, 0.6)
-    assert scene.objects[0].surface.ks == Vector3(0.7, 0.8, 0.9)
-    assert scene.objects[0].surface.color == Vector3(0, 0, 253)
+    assert scene.objects[0].surface.ka == (0.1, 0.2, 0.3)
+    assert scene.objects[0].surface.kd == (0.4, 0.5, 0.6)
+    assert scene.objects[0].surface.ks == (0.7, 0.8, 0.9)
+    assert scene.objects[0].surface.color == (0, 0, 253)
 
 
 def test_one_plane():
@@ -79,9 +79,9 @@ camera:
     scene, _ = parse_scene(scene_str)
     assert len(scene.objects) == 1
     assert isinstance(scene.objects[0], Plane)
-    assert scene.objects[0].point == Vector3(0, 0, 0)
-    assert scene.objects[0].normal == Vector3(0, 1, 0)
-    assert scene.objects[0].surface.color == Vector3(0, 0, 253)
+    assert scene.objects[0].point == (0, 0, 0)
+    assert scene.objects[0].normal == (0, 1, 0)
+    assert scene.objects[0].surface.color == (0, 0, 253)
 
 
 def test_scene_one_light_source():
@@ -103,8 +103,8 @@ camera:
 
     assert len(scene.light_sources) == 1
     assert isinstance(scene.light_sources[0], LightSource)
-    assert scene.light_sources[0].position == Vector3(20, 50, 30)
-    assert scene.light_sources[0].power == Vector3(1000, 1000, 1000)
+    assert scene.light_sources[0].position == (20, 50, 30)
+    assert scene.light_sources[0].power == (1000, 1000, 1000)
 
 
 def test_camera():
@@ -124,8 +124,8 @@ camera:
 """
     _, camera = parse_scene(scene_str)
 
-    assert camera.position == Vector3(0, 0, 0)
-    assert camera.direction == Vector3(1, -0.45, 0)
-    assert camera.up == Vector3(1, 1, 0)
+    assert camera.position == (0, 0, 0)
+    assert camera.direction == (1, -0.45, 0)
+    assert camera.up == (1, 1, 0)
     assert camera.field_of_view == 2.3
     assert camera.screen_distance == 11

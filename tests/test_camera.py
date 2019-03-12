@@ -1,24 +1,21 @@
 from .context import raytracer
 
 from raytracer.ray_tracer import Camera, Screen
-from raytracer.vector import Vector3
 
 from pytest import approx
 
 
 def test_compute_camera_origin():
 
-    camera = Camera((0, 0, 0), Vector3(1, 0, 0), Vector3(1, 1, 0))
+    camera = Camera((0, 0, 0), (1, 0, 0), (1, 1, 0))
 
-    assert camera.n == Vector3(-1, 0, 0)
-    assert camera.v == Vector3(0, 1, 0)
-    assert camera.u == Vector3(0, 0, 1)
+    assert camera.n == (-1, 0, 0)
+    assert camera.v == (0, 1, 0)
+    assert camera.u == (0, 0, 1)
 
 
 def test_screen_size_and_position_do_not_depend_on_resolution():
-    camera = Camera(
-        Vector3(0, 0, 0), Vector3(1, 0, 0), Vector3(1, 1, 0), screen_distance=5
-    )
+    camera = Camera((0, 0, 0), (1, 0, 0), (1, 1, 0), screen_distance=5)
 
     screen1 = Screen(40, 30)
     camera.set_screen(screen1)
@@ -40,9 +37,7 @@ def test_screen_size_and_position_do_not_depend_on_resolution():
 
 
 def test_center_pixel_position():
-    camera = Camera(
-        Vector3(0, 0, 0), Vector3(1, 0, 0), Vector3(1, 1, 0), screen_distance=5
-    )
+    camera = Camera((0, 0, 0), (1, 0, 0), (1, 1, 0), screen_distance=5)
 
     screen1 = Screen(40, 30)
     camera.set_screen(screen1)
@@ -63,9 +58,9 @@ def test_center_pixel_position():
     print(f"40,30: {pixel_40_30}")
 
     # check screen is centered
-    assert pixel_0_0.y == approx(-pixel_40_30.y)
-    assert pixel_0_0.z == approx(-pixel_40_30.z)
+    assert pixel_0_0[1] == approx(-pixel_40_30[1])  # y
+    assert pixel_0_0[2] == approx(-pixel_40_30[2])  # z
 
     pixel_center = camera.pixel_pos(15, 20)
 
-    assert pixel_center.as_tuple() == approx(Vector3(5, 0, 0).as_tuple())
+    assert pixel_center == approx((5, 0, 0))

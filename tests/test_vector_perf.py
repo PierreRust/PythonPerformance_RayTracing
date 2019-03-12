@@ -15,9 +15,24 @@ from .context import raytracer
 from raytracer import vector
 
 from collections import namedtuple
-
-from raytracer.vector import Vector3
+from typing import Union
 import numpy as np
+
+
+class Vector3:
+    def __init__(self, x, y, z):
+        self.x, self.y, self.z = x, y, z
+
+    def __add__(self, other: Union["Vector3", float]) -> "Vector3":
+        if isinstance(other, Vector3):
+            return Vector3(self.x + other.x, self.y + other.y, self.z + other.z)
+        else:
+            return Vector3(self.x + other, self.y + other, self.z + other)
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, Vector3):
+            return False
+        return other.x == self.x and other.y == self.y and self.z == other.z
 
 
 def test_vector(benchmark):

@@ -9,15 +9,23 @@ import time
 from os.path import splitext
 from time import sleep
 
-<<<<<<< HEAD
 from PIL import Image
-=======
-import png  # type: ignore
->>>>>>> Use kd tree for intersection
 from typing import Tuple, Optional, List
 from multiprocessing import Pool
 
-from raytracer.vector import Vector3
+from raytracer.vector import (
+    Vector3,
+    normalize,
+    norm,
+    div_scalar,
+    sub_vec,
+    add_vec,
+    add_scalar,
+    mult_vec,
+    mult_scalar,
+    cross,
+    dot,
+)
 
 
 """
@@ -37,21 +45,21 @@ class Ray:
     """ a Ray is a line"""
 
     def __init__(self, origin: Vector3, direction: Vector3):
-        self.origin = origin
+        self.origin = tuple(origin)
         # Make sure to always use a unit vector to be able to compare distances
         # on different rays.
-        self.direction = direction.normalize()
+        self.direction = normalize(direction)
 
     def __repr__(self):
         return f"Ray({self.origin}, {self.direction})"
 
 
 class LightSource:
-    def __init__(self, position, power=Vector3(1, 1, 1)):
-        self.position = Vector3(*position)
+    def __init__(self, position: Vector3, power=(1, 1, 1)):
+        self.position = tuple(position)
         # Power of the light source, not restricted to [0-1]
         # The value depends on the scale of the scene you are using
-        self.power = Vector3(*power)
+        self.power = tuple(power)
 
     def __repr__(self):
         return f"Light({self.position}, {self.power})"
@@ -114,14 +122,14 @@ class Surface:
         self.diffuse = diffuse
 
         # Surface properties for Phong reflection model
-        self.color = Vector3(*color) if color is not None else Vector3(0, 0, 0)
-        self.ka = Vector3(*ka) if ka is not None else Vector3(0.9, 0.9, 0.9)
-        self.kd = Vector3(*kd) if kd is not None else Vector3(0.8, 0.8, 0.8)
-        self.ks = Vector3(*ks) if ks is not None else Vector3(1.2, 1.2, 1.2)
+        self.color = tuple(color) if color is not None else (0, 0, 0)
+        self.ka = tuple(ka) if ka is not None else (0.9, 0.9, 0.9)
+        self.kd = tuple(kd) if kd is not None else (0.8, 0.8, 0.8)
+        self.ks = tuple(ks) if ks is not None else (1.2, 1.2, 1.2)
         self.alpha = alpha
 
         self.mirror_reflection = (
-            Vector3(*mirror_reflection) if mirror_reflection is not None else None
+            tuple(mirror_reflection) if mirror_reflection is not None else None
         )
         self.kr = kr
 
@@ -129,73 +137,92 @@ class Surface:
         # Compute the color for a ray touching this surface,
         # using phong, reflection or transparent (reflexion + refraction + fresnel)
 
-        color = Vector3(0, 0, 0)
+        color = (0, 0, 0)
         if self.diffuse:
             # Phong model for ambient, diffuse and specular reflexion light
-            color += self.phong(point, hit_normal, ray, scene)
+            color = add_vec(color, self.phong(point, hit_normal, ray, scene))
 
         if depth < 0:
             return color
 
         if self.mirror_reflection:
             # Reflexion only, mirror like
-            color += self.mirror_reflection * self.reflexion_at(
-                point, ray, hit_normal, scene, depth
+            color = add_vec(
+                color,
+                mult_vec(
+                    self.mirror_reflection,
+                    self.reflexion_at(point, ray, hit_normal, scene, depth),
+                ),
             )
 
             return color
 
         elif self.kr:
             # Refraction
-            color += self.refraction_at(point, ray, hit_normal, scene, depth)
+            color = add_vec(
+                color, self.refraction_at(point, ray, hit_normal, scene, depth)
+            )
         return color
 
     def diffuse_lightning(self, normal: Vector3, light_dir: Vector3, light_power):
-        dot_p = normal.dot(light_dir)
+        dot_p = dot(normal, light_dir)
         if dot_p > 0:
-            return (self.kd * dot_p) * light_power
-        return Vector3(0, 0, 0)
+            return mult_vec(mult_scalar(self.kd, dot_p), light_power)
+
+        return (0, 0, 0)
 
     def specular_reflexion(
         self, ray: Ray, normal: Vector3, light_dir: Vector3, light_power
     ):
-        spec_reflexion_dir = 2 * (light_dir.dot(normal)) * normal - light_dir
-        view_dir = ray.direction * -1
-        spec_coef = view_dir.dot(spec_reflexion_dir)
+        spec_reflexion_dir = sub_vec(
+            mult_scalar(normal, 2 * dot(light_dir, normal)), light_dir
+        )
+        view_dir = mult_scalar(ray.direction, -1)
+        spec_coef = dot(view_dir, spec_reflexion_dir)
         if spec_coef > 0:
-            return (self.ks * math.pow(spec_coef, self.alpha)) * light_power
-        return Vector3(0, 0, 0)
+            return mult_vec(
+                mult_scalar(self.ks, math.pow(spec_coef, self.alpha)), light_power
+            )
+        return (0, 0, 0)
 
     def phong(self, point, normal, ray, scene):
 
         # ambient light
-        ambient_coef = self.ka * scene.ambient_light
+        ambiant_coef = mult_vec(self.ka, scene.ambient_light)
 
         # For each light source, diffuse and specular reflexion
-        lights_coef = Vector3(0, 0, 0)
+        lights_coef = (0, 0, 0)
         for light in scene.light_sources:
 
             # Direction and distance to light
-            light_segment = light.position - point
-            light_dir = light_segment.normalize()
-            light_power = light.power / (math.pi * light_segment.dot(light_segment))
+            light_segment = sub_vec(light.position, point)
+            light_dir = normalize(light_segment)
+            light_power = div_scalar(
+                light.power, math.pi * dot(light_segment, light_segment)
+            )
 
             # check if there is an object between the light source and the point
-            outer_point = point + normal * NUDGE
-            _, obj = scene.find_intersect(Ray(outer_point, light_dir), exclude=[self])
-            if obj:
+            outer_point = add_vec(point, mult_scalar(normal, NUDGE))
+            if scene.find_intersect(Ray(outer_point, light_dir), exclude=[self]):
                 continue
 
             # Diffuse lightning:
-            lights_coef += self.diffuse_lightning(normal, light_dir, light_power)
+            lights_coef = add_vec(
+                lights_coef, self.diffuse_lightning(normal, light_dir, light_power)
+            )
             # Specular reflexion lightning
-            lights_coef += self.specular_reflexion(ray, normal, light_dir, light_power)
+            lights_coef = add_vec(
+                lights_coef,
+                self.specular_reflexion(ray, normal, light_dir, light_power),
+            )
 
-        return self.color * (ambient_coef + lights_coef)
+        return mult_vec(self.color, add_vec(ambiant_coef, lights_coef))
 
     def reflexion_at(self, point, ray, normal, scene, depth):
-        reflexion_dir = ray.direction - 2 * (ray.direction.dot(normal)) * normal
-        reflexion_ray = Ray(point + normal * NUDGE, reflexion_dir)
+        reflexion_dir = sub_vec(
+            ray.direction, mult_scalar(normal, 2 * dot(ray.direction, normal))
+        )
+        reflexion_ray = Ray(add_vec(point, mult_scalar(normal, NUDGE)), reflexion_dir)
         reflexion_color = scene.cast_ray(reflexion_ray, depth - 1)
         return reflexion_color
 
@@ -220,27 +247,34 @@ class Surface:
         r = r0 + (1 - r0) * math.pow(1 - cos_out, 5)
 
         # Reflexion
-        reflexion_dir = ray.direction - 2 * (ray.direction.dot(normal)) * normal
-        reflexion_ray = Ray(point + normal * NUDGE, reflexion_dir)
+        reflexion_dir = sub_vec(
+            ray.direction, mult_scalar(normal, 2 * dot(ray.direction, normal))
+        )
+        reflexion_ray = Ray(add_vec(point, mult_scalar(normal, NUDGE)), reflexion_dir)
         reflexion_color = scene.cast_ray(reflexion_ray, depth - 1)
 
         # Refraction
-        refraction_color = Vector3(255, 0, 0)
+        refraction_color = (255, 0, 0)
         dis = 1 - n12 * n12 * (1 - cos_out * cos_out)
         if dis > 0:
             # otherwise, no refraction, all is reflected
-            refraction_dir = n12 * (
-                ray.direction - normal * cos_out
-            ) - normal * math.sqrt(dis)
+            refraction_dir = sub_vec(
+                mult_scalar(sub_vec(ray.direction, mult_scalar(normal, cos_out)), n12),
+                mult_scalar(normal, math.sqrt(dis)),
+            )
 
-            refraction_ray = Ray(point - normal * NUDGE, refraction_dir)
+            refraction_ray = Ray(
+                sub_vec(point, mult_scalar(normal, NUDGE)), refraction_dir
+            )
 
             # Cast a refraction (aka transparency) ray:
             refraction_color = scene.cast_ray(refraction_ray, depth - 1)
         else:
             r = 1
 
-        color = r * reflexion_color + (1 - r) * refraction_color
+        color = add_vec(
+            mult_scalar(reflexion_color, r), mult_scalar(refraction_color, (1 - r))
+        )
 
         return color
 
@@ -259,12 +293,12 @@ class SceneObject:
         raise NotImplementedError()
 
     def color_for_ray(self, ray, distance: float, scene: "Scene", depth) -> Vector3:
-        point = distance * ray.direction + ray.origin
+        point = add_vec(mult_scalar(ray.direction, distance), ray.origin)
         normal = self.normal_at(point)
         # Difference normal vs hitNormal !
-        cos_out = normal.dot(ray.direction)
+        cos_out = dot(normal, ray.direction)
         if cos_out > 0:
-            hit_normal = -1 * normal
+            hit_normal = mult_scalar(normal, -1)
         else:
             hit_normal = normal
 
@@ -274,17 +308,17 @@ class SceneObject:
 class Plane(SceneObject):
     def __init__(self, point: Vector3, normal: Vector3, surface: Surface):
         super().__init__(surface)
-        self.point = Vector3(*point)
-        self.normal = Vector3(*normal).normalize()
+        self.point = tuple(point)
+        self.normal = normalize(normal)
 
     def intersect(self, ray: Ray) -> Optional[float]:
         # The equation of the plane is (point - pt ) . normal = 0
         # we can replace pt by the ray equation : (point -dir * t - origin) . normal = 0
         # t = (point- origin) . normal) / ((dir) . normal)
-        d = ray.direction.dot(self.normal)
+        d = dot(ray.direction, self.normal)
         if d == 0:
             return None
-        n = (self.point - ray.origin).dot(self.normal)
+        n = dot(sub_vec(self.point, ray.origin), self.normal)
         t = n / d
         if t > 0:
             return t
@@ -301,15 +335,16 @@ class Sphere(SceneObject):
     def __init__(self, position: Vector3, radius: float, surface):
         super().__init__(surface)
         self.radius = radius
-        self.position = Vector3(*position)
+        self.position = tuple(position)
 
     def intersect(self, ray: Ray) -> Optional[float]:
         # intersection is a quadratic equation at^2 + bt +c = 0 with:
-        a = ray.direction.dot(ray.direction)
-        b = 2 * ray.direction.dot((ray.origin - self.position))
-        c = (ray.origin - self.position).dot(
-            (ray.origin - self.position)
-        ) - self.radius * self.radius
+        a = dot(ray.direction, ray.direction)
+        b = 2 * dot(ray.direction, sub_vec(ray.origin, self.position))
+        c = (
+            dot(sub_vec(ray.origin, self.position), sub_vec(ray.origin, self.position))
+            - self.radius * self.radius
+        )
         # Discriminant
         discriminant = b * b - 4 * a * c
 
@@ -337,7 +372,7 @@ class Sphere(SceneObject):
             return t1
 
     def normal_at(self, pt):
-        return (pt - self.position).normalize()
+        return normalize(sub_vec(pt, self.position))
 
     def middle_point(self):
         return self.position
@@ -357,20 +392,14 @@ class Scene:
         self.objects = [] if objects is None else objects
         self.light_sources = [] if light_sources is None else light_sources
         self.ambient_light = (
-            Vector3(0.6, 0.6, 0.6) if ambient_light is None else Vector3(*ambient_light)
+            (0.6, 0.6, 0.6) if ambient_light is None else tuple(ambient_light)
         )
-        self.background = (
-            Vector3(0, 0, 0) if background is None else Vector3(*background)
-        )
+        self.background = (0, 0, 0) if background is None else tuple(background)
         self.kdtree = None
 
     def set_intersect_mode(self, mode):
-<<<<<<< HEAD
         self.mode = mode
         if mode.startswith("kdtree"):
-=======
-        if mode == "kdtree":
->>>>>>> Use kd tree for intersection
             self.kdtree = build_kdtree(self.objects)
 
     def find_intersect(
@@ -380,18 +409,12 @@ class Scene:
         if not self.kdtree:
             # basic O(n) linear intersection implementation
             return self.linear_intersect(ray, exclude)
-<<<<<<< HEAD
         elif self.mode == "kdtree":
             # Recursive KD tree intersect
             return self.kdtree.intersect(ray, exclude)
         elif self.mode == "kdtree_iter":
             # Recursive KD tree intersect
             return kd_intersect(self.kdtree, ray, exclude)
-=======
-        else:
-            # Recursive KD tree intersect
-            return self.kdtree.intersect(ray, exclude)
->>>>>>> Use kd tree for intersection
 
     def linear_intersect(self, ray, exclude):
         intersections = []
@@ -467,14 +490,6 @@ class PngScreen(Screen):
             # simulate an io operation that would block the thread for 1 ms
             sleep(0.001)
 
-        if self.mode == "threads-io":
-            # simulate an io operation that would block the thread for 1 ms
-            sleep(0.001)
-
-        if self.mode == "threads-io":
-            # simulate an io operation that would block the thread for 1 ms
-            sleep(0.001)
-
     def reveal(self):
         print(f"Write image to disk: {self.filename}")
         flat_buffer = [c for row in self.buffer for color in row for c in color]
@@ -505,17 +520,17 @@ class Camera:
         field_of_view=math.pi * 0.4,
         screen_distance=10,
     ):
-        self.position = Vector3(*position)
-        self.direction = Vector3(*direction)  # In which we are looking !
-        self.up = Vector3(*up)  # viewing orientation
+        self.position = tuple(position)
+        self.direction = tuple(direction)  # In which we are looking !
+        self.up = tuple(up)  # viewing orientation
         self.field_of_view = field_of_view  # angle,
         self.screen_distance = screen_distance
 
         # Compute basis vector at camera position:
         # need : position, coi and v_up
-        self.n = -1 * self.direction.normalize()
-        self.u = (self.up.cross(self.n)).normalize()
-        self.v = self.n.cross(self.u)
+        self.n = normalize(mult_scalar(self.direction, -1))
+        self.u = normalize(cross(self.up, self.n))
+        self.v = cross(self.n, self.u)
         self.screen_3d_width, self.screen_3d_height = 0, 0
 
     def set_screen(self, screen: Screen):
@@ -528,11 +543,12 @@ class Camera:
         self.screen_3d_height = self.screen_3d_width / screen.ratio
 
         # Compute bottom left point of the view, in 3D space:
-        screen_center = self.position - (self.n * self.screen_distance)
-        self.screen_corner = (
-            screen_center
-            - (self.u * (self.screen_3d_width / 2))
-            - (self.v * (self.screen_3d_height / 2))
+        screen_center = sub_vec(
+            self.position, mult_scalar(self.n, self.screen_distance)
+        )
+        self.screen_corner = sub_vec(
+            sub_vec(screen_center, mult_scalar(self.u, (self.screen_3d_width / 2))),
+            mult_scalar(self.v, (self.screen_3d_height / 2)),
         )
 
     def take_picture(self, scene: Scene, parallel=None):
@@ -580,16 +596,17 @@ class Camera:
 
     def pixel_pos(self, row: int, col: int) -> Vector3:
         # the position of a pixel in the 3D space
-
-        return (
-            self.screen_corner
-            + (col * self.u * self.screen_3d_width / self.screen.width)
-            + (row * self.v * self.screen_3d_height / self.screen.height)
+        return add_vec(
+            add_vec(
+                self.screen_corner,
+                mult_scalar(self.u, col * self.screen_3d_width / self.screen.width),
+            ),
+            mult_scalar(self.v, row * self.screen_3d_height / self.screen.height),
         )
 
     def ray_for_pixel(self, row: int, col: int):
         pixel_pos = self.pixel_pos(row, col)
-        return Ray(self.position, pixel_pos - self.position)
+        return Ray(self.position, sub_vec(pixel_pos, self.position))
 
 
 class BoundingBox:
@@ -649,7 +666,6 @@ class KDNode:
         return float("inf"), None
 
 
-<<<<<<< HEAD
 def kd_intersect(
     node: KDNode, ray: Ray, exclude=None
 ) -> Tuple[float, Optional[SceneObject]]:
@@ -680,11 +696,9 @@ def kd_intersect(
     return min_d, min_shape
 
 
-=======
->>>>>>> Use kd tree for intersection
 def build_bounding_box(shapes: List[Sphere]) -> BoundingBox:
     if not shapes:
-        return BoundingBox(Vector3(0, 0, 0), 0)
+        return BoundingBox((0, 0, 0), 0)
 
     # start with first shape and expand for all other shapes
     position = shapes[0].position
@@ -692,7 +706,7 @@ def build_bounding_box(shapes: List[Sphere]) -> BoundingBox:
 
     for shape in shapes[1:]:
         # expand the bounding box
-        position_distance = (shape.position - position).norm()
+        position_distance = norm(sub_vec(shape.position, position))
         if position_distance + shape.radius <= radius:
             # The shape is already fully contained in the current bbox.
             continue
@@ -703,8 +717,11 @@ def build_bounding_box(shapes: List[Sphere]) -> BoundingBox:
             continue
         # Smallest sphere containing the shape and the box:
         new_radius = (radius + shape.radius + position_distance) / 2
-        position = position + (shape.position - position).normalize() * (
-            new_radius - radius
+        position = add_vec(
+            position,
+            mult_scalar(
+                normalize(sub_vec(shape.position, position)), (new_radius - radius)
+            ),
         )
         radius = new_radius
 
@@ -763,7 +780,7 @@ def build_kdtree(shapes: List[SceneObject]) -> KDNode:
         return KDNode(shapes)
 
     # select axis on the largest variance of objects coordinates
-    middle_points = [shape.middle_point().as_tuple() for shape in shapes]
+    middle_points = [shape.middle_point() for shape in shapes]
     axis = select_axis(middle_points)
 
     # split on mean of the middle point of the shapes
@@ -807,11 +824,7 @@ def parse_args():
         "--intersect",
         "-i",
         type=str,
-<<<<<<< HEAD
         choices=["linear", "kdtree", "kdtree_iter"],
-=======
-        choices=["linear", "kdtree"],
->>>>>>> Use kd tree for intersection
         help="Mode for intersection computation",
         default="linear",
     )
