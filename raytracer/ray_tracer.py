@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import functools
 from concurrent.futures import ThreadPoolExecutor
 import math
 import time
@@ -436,8 +437,10 @@ class PngScreen(Screen):
         img.save(self.filename)
 
 
-def cast_ray_for_pixel(args):
-    camera, scene, row, col, direct_draw = args
+def cast_ray_for_pixel(camera, scene, direct_draw, pixel):
+    # Function that computes the color for a pixel,
+    # and optionally, draw it on the screen.
+    row, col = pixel
     ray = camera.ray_for_pixel(row, col)
     color = scene.cast_ray(ray)
     if direct_draw:
@@ -489,15 +492,21 @@ class Camera:
 
         if parallel.startswith("threads"):
             # Parallel pixels generation, with threads:
+            # We need a task function to pass to the worker threads
+            partial_cast = functools.partial(cast_ray_for_pixel, self, scene, True)
+
             with ThreadPoolExecutor() as executor:
                 for r, c in self.screen.pixels():
-                    executor.submit(cast_ray_for_pixel, (self, scene, r, c, True))
+                    executor.submit(partial_cast, (r, c))
         elif parallel.startswith("process"):
             # multiprocess generation
             with Pool() as pool:
+
+                partial_cast = functools.partial(cast_ray_for_pixel, self, scene, False)
+
                 colors = pool.map(
-                    cast_ray_for_pixel,
-                    [(self, scene, r, c, False) for r, c in self.screen.pixels()],
+                    partial_cast,
+                    [(r, c) for r, c in self.screen.pixels()],
                     chunksize=int(self.screen.height * self.screen.width / 4),
                 )
             for (r, c), color in zip(self.screen.pixels(), colors):
