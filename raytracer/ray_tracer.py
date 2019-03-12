@@ -438,25 +438,25 @@ class Camera:
         self.n = -1 * self.direction.normalize()
         self.u = (self.up.cross(self.n)).normalize()
         self.v = self.n.cross(self.u)
-        self.screen_width, self.screen_height = 0, 0
+        self.screen_3d_width, self.screen_3d_height = 0, 0
 
     def set_screen(self, screen: Screen):
         self.screen = screen
 
         # Compute Width and Height of the view, in 3D space:
-        self.screen_width = math.tan(self.field_of_view / 2) * (
+        self.screen_3d_width = math.tan(self.field_of_view / 2) * (
             2 * self.screen_distance
         )
-        self.screen_height = self.screen_width / screen.ratio
-        self.pixel_with = self.screen_width / self.screen.width
-        self.pixel_height = self.screen_height / self.screen.height
+        self.screen_3d_height = self.screen_3d_width / screen.ratio
+        self.pixel_with = self.screen_3d_width / self.screen.width
+        self.pixel_height = self.screen_3d_height / self.screen.height
 
         # Compute bottom left point of the view, in 3D space:
         screen_center = self.position - (self.n * self.screen_distance)
         self.screen_corner = (
             screen_center
-            - (self.u * (self.screen_width / 2))
-            - (self.v * (self.screen_height / 2))
+            - (self.u * (self.screen_3d_width / 2))
+            - (self.v * (self.screen_3d_height / 2))
         )
 
     def take_picture(self, scene: Scene):
@@ -467,8 +467,11 @@ class Camera:
 
         # Sequential generation of pixels:
         for row, col in self.screen.pixels():
-            ray = self._ray_for_pixel(row, col)
+            # Get ray for a pixel
+            ray = self.ray_for_pixel(row, col)
+            # Send the ray on the scene to get the color
             color = scene.cast_ray(ray)
+            # Draw that pixel on the screen
             self.screen.draw_pixel(row, col, color)
 
         end = time.time()
@@ -485,8 +488,8 @@ class Camera:
 
         return (
             self.screen_corner
-            + (self.u * col * self.pixel_with)
-            + (self.v * row * self.pixel_height)
+            + (col * self.u * self.screen_3d_width / self.screen.width)
+            + (row * self.v * self.screen_3d_height / self.screen.height)
         )
 
     def ray_for_pixel(self, row: int, col: int):
