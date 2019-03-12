@@ -408,8 +408,8 @@ class PngScreen(Screen):
         self.filename = filename
         self.screen_width = screen_width
         self.screen_height = screen_height
-        # buffer is a grid  or [r, g, b] arrays
         self.mode = mode
+        # buffer is a grid  or [r, g, b] arrays
         self.buffer = [
             [[0 for _ in range(3)] for _ in range(width)] for _ in range(height)
         ]
@@ -422,6 +422,10 @@ class PngScreen(Screen):
             min(255, max(0, int(b))),
         ]
         self.buffer[self.screen_height - row-1][col] = color_array
+
+        if self.mode == "threads-io":
+            # simulate an io operation that would block the thread for 1 ms
+            sleep(0.001)
 
         if self.mode == "threads-io":
             # simulate an io operation that would block the thread for 1 ms
