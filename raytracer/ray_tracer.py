@@ -9,7 +9,11 @@ import time
 from os.path import splitext
 from time import sleep
 
+<<<<<<< HEAD
 from PIL import Image
+=======
+import png  # type: ignore
+>>>>>>> Use kd tree for intersection
 from typing import Tuple, Optional, List
 from multiprocessing import Pool
 
@@ -361,8 +365,12 @@ class Scene:
         self.kdtree = None
 
     def set_intersect_mode(self, mode):
+<<<<<<< HEAD
         self.mode = mode
         if mode.startswith("kdtree"):
+=======
+        if mode == "kdtree":
+>>>>>>> Use kd tree for intersection
             self.kdtree = build_kdtree(self.objects)
 
     def find_intersect(
@@ -372,12 +380,18 @@ class Scene:
         if not self.kdtree:
             # basic O(n) linear intersection implementation
             return self.linear_intersect(ray, exclude)
+<<<<<<< HEAD
         elif self.mode == "kdtree":
             # Recursive KD tree intersect
             return self.kdtree.intersect(ray, exclude)
         elif self.mode == "kdtree_iter":
             # Recursive KD tree intersect
             return kd_intersect(self.kdtree, ray, exclude)
+=======
+        else:
+            # Recursive KD tree intersect
+            return self.kdtree.intersect(ray, exclude)
+>>>>>>> Use kd tree for intersection
 
     def linear_intersect(self, ray, exclude):
         intersections = []
@@ -635,6 +649,7 @@ class KDNode:
         return float("inf"), None
 
 
+<<<<<<< HEAD
 def kd_intersect(
     node: KDNode, ray: Ray, exclude=None
 ) -> Tuple[float, Optional[SceneObject]]:
@@ -665,6 +680,8 @@ def kd_intersect(
     return min_d, min_shape
 
 
+=======
+>>>>>>> Use kd tree for intersection
 def build_bounding_box(shapes: List[Sphere]) -> BoundingBox:
     if not shapes:
         return BoundingBox(Vector3(0, 0, 0), 0)
@@ -790,7 +807,11 @@ def parse_args():
         "--intersect",
         "-i",
         type=str,
+<<<<<<< HEAD
         choices=["linear", "kdtree", "kdtree_iter"],
+=======
+        choices=["linear", "kdtree"],
+>>>>>>> Use kd tree for intersection
         help="Mode for intersection computation",
         default="linear",
     )
