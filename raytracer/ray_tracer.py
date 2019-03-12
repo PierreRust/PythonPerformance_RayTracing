@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import math
 import time
 from os.path import splitext
@@ -428,6 +429,13 @@ class PngScreen(Screen):
         img.save(self.filename)
 
 
+def cast_ray_for_pixel(args):
+    camera, scene, row, col = args
+    ray = camera.ray_for_pixel(row, col)
+    color = scene.cast_ray(ray)
+    camera.screen.draw_pixel(row, col, color)
+    return color
+
 class Camera:
     def __init__(
         self,
@@ -469,20 +477,23 @@ class Camera:
             - (self.v * (self.screen_3d_height / 2))
         )
 
-    def take_picture(self, scene: Scene):
-
+    def take_picture(self, scene: Scene, parallel=None):
         start = time.time()
-        assert self.screen is not None
-        assert self.screen_distance is not None
 
-        # Sequential generation of pixels:
-        for row, col in self.screen.pixels():
-            # Get ray for a pixel
-            ray = self.ray_for_pixel(row, col)
-            # Send the ray on the scene to get the color
-            color = scene.cast_ray(ray)
-            # Draw that pixel on the screen
-            self.screen.draw_pixel(row, col, color)
+        if parallel == "threads":
+            # Parallel pixels generation, with threads:
+            with ThreadPoolExecutor() as executor:
+                for r, c in self.screen.pixels():
+                    executor.submit(cast_ray_for_pixel, (self, scene, r,c) )
+        else:
+            # Sequential generation of pixels:
+            for row, col in self.screen.pixels():
+                # Get ray for a pixel
+                ray = self.ray_for_pixel(row, col)
+                # Send the ray on the scene to get the color
+                color = scene.cast_ray(ray)
+                # Draw that pixel on the screen
+                self.screen.draw_pixel(row, col, color)
 
         end = time.time()
         duration = end - start
@@ -522,6 +533,10 @@ def parse_args():
         "--output", type=str, help="name of generated image", default=None
     )
     parser.add_argument(
+        "--parallel", "-p", type=str, choices=["sequential", "threads"],
+        help="Parallel generation mode: sequential or threads", default="sequential"
+    )
+    parser.add_argument(
         "--size",
         type=str,
         help="size, as 'widthxheight', eg 800x600",
@@ -536,11 +551,11 @@ def parse_args():
     img_width, img_height = args.size.split("x")
     img_width, img_height = int(img_width), int(img_height)
 
-    return args.scene_file, args.output, img_width, img_height
+    return args.scene_file, args.output, img_width, img_height, args.parallel
 
 
 if __name__ == "__main__":
-    scene_file, output, width, height = parse_args()
+    scene_file, output, width, height, parallel = parse_args()
 
     from raytracer.sceneparser import parse_scene_from_file
 
@@ -549,4 +564,4 @@ if __name__ == "__main__":
     a_screen = PngScreen(output, width, height)
     a_camera.set_screen(a_screen)
 
-    a_camera.take_picture(a_scene)
+    a_camera.take_picture(a_scene, parallel)
