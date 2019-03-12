@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 import math
 import time
 from os.path import splitext
+from time import sleep
 
 from PIL import Image
 from typing import Tuple, Optional
@@ -400,12 +401,13 @@ class Screen:
 
 
 class PngScreen(Screen):
-    def __init__(self, filename, screen_width: int, screen_height: int):
+    def __init__(self, filename, screen_width: int, screen_height: int, mode=None):
         super().__init__(screen_width, screen_height)
         self.filename = filename
         self.screen_width = screen_width
         self.screen_height = screen_height
         # buffer is a grid  or [r, g, b] arrays
+        self.mode = mode
         self.buffer = [
             [[0 for _ in range(3)] for _ in range(width)] for _ in range(height)
         ]
@@ -418,6 +420,10 @@ class PngScreen(Screen):
             min(255, max(0, int(b))),
         ]
         self.buffer[self.screen_height - row-1][col] = color_array
+
+        if self.mode == "threads-io":
+            # simulate an io operation that would block the thread for 1 ms
+            sleep(0.001)
 
     def reveal(self):
         print(f"Write image to disk: {self.filename}")
@@ -435,6 +441,7 @@ def cast_ray_for_pixel(args):
     color = scene.cast_ray(ray)
     camera.screen.draw_pixel(row, col, color)
     return color
+
 
 class Camera:
     def __init__(
@@ -480,11 +487,11 @@ class Camera:
     def take_picture(self, scene: Scene, parallel=None):
         start = time.time()
 
-        if parallel == "threads":
+        if parallel.startswith("threads"):
             # Parallel pixels generation, with threads:
             with ThreadPoolExecutor() as executor:
                 for r, c in self.screen.pixels():
-                    executor.submit(cast_ray_for_pixel, (self, scene, r,c) )
+                    executor.submit(cast_ray_for_pixel, (self, scene, r, c))
         else:
             # Sequential generation of pixels:
             for row, col in self.screen.pixels():
@@ -533,8 +540,12 @@ def parse_args():
         "--output", type=str, help="name of generated image", default=None
     )
     parser.add_argument(
-        "--parallel", "-p", type=str, choices=["sequential", "threads"],
-        help="Parallel generation mode: sequential or threads", default="sequential"
+        "--parallel",
+        "-p",
+        type=str,
+        choices=["sequential", "threads", "threads-io"],
+        help="Parallel generation mode: sequential or threads",
+        default="sequential",
     )
     parser.add_argument(
         "--size",
@@ -561,7 +572,7 @@ if __name__ == "__main__":
 
     a_scene, a_camera = parse_scene_from_file(scene_file)
 
-    a_screen = PngScreen(output, width, height)
+    a_screen = PngScreen(output, width, height, parallel)
     a_camera.set_screen(a_screen)
 
     a_camera.take_picture(a_scene, parallel)
