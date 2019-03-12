@@ -457,6 +457,10 @@ class PngScreen(Screen):
             # simulate an io operation that would block the thread for 1 ms
             sleep(0.001)
 
+        if self.mode == "threads-io":
+            # simulate an io operation that would block the thread for 1 ms
+            sleep(0.001)
+
     def reveal(self):
         print(f"Write image to disk: {self.filename}")
         flat_buffer = [c for row in self.buffer for color in row for c in color]
