@@ -361,7 +361,8 @@ class Scene:
         self.kdtree = None
 
     def set_intersect_mode(self, mode):
-        if mode == "kdtree":
+        self.mode = mode
+        if mode.startswith("kdtree"):
             self.kdtree = build_kdtree(self.objects)
 
     def find_intersect(
@@ -371,9 +372,12 @@ class Scene:
         if not self.kdtree:
             # basic O(n) linear intersection implementation
             return self.linear_intersect(ray, exclude)
-        else:
+        elif self.mode == "kdtree":
             # Recursive KD tree intersect
             return self.kdtree.intersect(ray, exclude)
+        elif self.mode == "kdtree_iter":
+            # Recursive KD tree intersect
+            return kd_intersect(self.kdtree, ray, exclude)
 
     def linear_intersect(self, ray, exclude):
         intersections = []
@@ -627,6 +631,36 @@ class KDNode:
         return float("inf"), None
 
 
+def kd_intersect(
+    node: KDNode, ray: Ray, exclude=None
+) -> Tuple[float, Optional[SceneObject]]:
+
+    # Use a DFS traversal of the tree instead of the recursive version
+    open = [node]
+    min_d, min_shape = float("inf"), None
+
+    while open:
+        node = open.pop()
+        if node.bbox.intersect(ray):
+            leaf = True
+            if node.left is not None:
+                open.append(node.left)
+                leaf = False
+            if node.right is not None:
+                open.append(node.right)
+                leaf = False
+            if leaf:
+                for shape in node.shapes:
+                    if exclude is not None and shape in exclude:
+                        continue
+                    d_intersect = shape.intersect(ray)
+                    if d_intersect is not None and d_intersect < min_d:
+                        min_d = d_intersect
+                        min_shape = shape
+
+    return min_d, min_shape
+
+
 def build_bounding_box(shapes: List[Sphere]) -> BoundingBox:
     if not shapes:
         return BoundingBox(Vector3(0, 0, 0), 0)
@@ -752,7 +786,7 @@ def parse_args():
         "--intersect",
         "-i",
         type=str,
-        choices=["linear", "kdtree"],
+        choices=["linear", "kdtree", "kdtree_iter"],
         help="Mode for intersection computation",
         default="linear",
     )
