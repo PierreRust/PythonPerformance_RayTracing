@@ -30,7 +30,7 @@ def test_centered_single_sphere():
     screen = PngScreen("test_centered_single_sphere.png", 400, 400)
     camera.set_screen(screen)
 
-    camera._ray_for_pixel(50, 50)
+    camera.ray_for_pixel(50, 50)
 
     camera.take_picture(scene)
 
@@ -51,7 +51,7 @@ def test_sphere_position():
     screen = PngScreen("test_sphere_position.png", 600, 400)
     camera.set_screen(screen)
 
-    camera._ray_for_pixel(50, 50)
+    camera.ray_for_pixel(50, 50)
 
     camera.take_picture(scene)
 
@@ -73,6 +73,6 @@ def test_two_spheres():
     screen = PngScreen("test_two_spheres.png", 400, 400)
     camera.set_screen(screen)
 
-    camera._ray_for_pixel(50, 50)
+    camera.ray_for_pixel(50, 50)
 
     camera.take_picture(scene)

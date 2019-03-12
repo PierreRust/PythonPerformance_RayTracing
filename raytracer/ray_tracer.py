@@ -480,7 +480,7 @@ class Camera:
         )
         self.screen.reveal()
 
-    def _pixel_pos(self, row: int, col: int) -> Vector3:
+    def pixel_pos(self, row: int, col: int) -> Vector3:
         # the position of a pixel in the 3D space
 
         return (
@@ -489,8 +489,8 @@ class Camera:
             + (self.v * row * self.pixel_height)
         )
 
-    def _ray_for_pixel(self, row: int, col: int):
-        pixel_pos = self._pixel_pos(row, col)
+    def ray_for_pixel(self, row: int, col: int):
+        pixel_pos = self.pixel_pos(row, col)
         return Ray(self.position, pixel_pos - self.position)
 
 
