@@ -1,0 +1,79 @@
+
+
+surfaces:
+  mirror:
+    diffuse: True
+    color: [20, 120, 150]
+    ka: [0.5, 0.5, 0.5]
+    kd: [0.5, 0.5, 0.5]
+    ks: [1.2, 1.2, 1.2]
+    mirror_reflection: [0.9, 0.9, 0.9]
+  violet:
+    color: [148,0, 211]
+    ka: [0.3, 0.3, 0.3]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.3, 0.3, 0.3]
+  yellow:
+    color: [255, 255, 0]
+    ka: [0.3, 0.3, 0.3]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.3, 0.3, 0.3]
+  ground_surface:
+    color: [230,230,230]
+    ka: [0.5, 0.5, 0.5]
+    kd: [0.7, 0.7, 0.7]
+    mirror_reflection: [0.2, 0.2, 0.2]
+  transparent:
+    diffuse: False
+    color: [20, 120, 20]
+    kr: 2.5
+
+objects:
+  sphere_left:
+    type: sphere
+    position: [30, 5, -7.1]
+    radius: 5
+    surface: transparent
+  sphere_front:
+    type: sphere
+    position: [22.9, 5, 0]
+    radius: 5
+    surface: yellow
+  sphere_back:
+    type: sphere
+    position: [37.1, 5, 0]
+    radius: 5
+    surface: mirror
+  sphere_right:
+    type: sphere
+    position: [30, 5, 7.1]
+    radius: 5
+    surface: violet
+  ground:
+    type: plane
+    point: [0,0,0]
+    normal: [0,1,0]
+    surface: ground_surface
+
+lights:
+  l1:
+    position: [10, 30, 10]
+    power: [1800, 1800, 1800]
+
+  l2:
+    position: [20, 20, -10]
+    power: [1200, 1200, 1200]
+
+camera:
+  position: [10, 25, 0]
+  direction: [1, -1.1, 0]
+  up: [1, 1, 0]
+  screen_distance: 10
+
+scene:
+  ambient_light: [0.6, 0.6, 0.6]
+  background: [87, 178, 227]
