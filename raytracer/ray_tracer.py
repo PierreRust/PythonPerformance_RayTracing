@@ -2,6 +2,7 @@
 
 import argparse
 import functools
+import statistics
 from concurrent.futures import ThreadPoolExecutor
 import math
 import time
@@ -9,7 +10,7 @@ from os.path import splitext
 from time import sleep
 
 from PIL import Image
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 from multiprocessing import Pool
 
 from raytracer.vector import Vector3
@@ -25,6 +26,7 @@ are implemented externally.
 
 MAX_DEPTH = 3
 NUDGE = 0.03
+MIN_NODE_SHAPE = 4
 
 
 class Ray:
@@ -249,6 +251,9 @@ class SceneObject:
     def normal_at(self, pt):
         raise NotImplementedError()
 
+    def middle_point(self):
+        raise NotImplementedError()
+
     def color_for_ray(self, ray, distance: float, scene: "Scene", depth) -> Vector3:
         point = distance * ray.direction + ray.origin
         normal = self.normal_at(point)
@@ -330,6 +335,9 @@ class Sphere(SceneObject):
     def normal_at(self, pt):
         return (pt - self.position).normalize()
 
+    def middle_point(self):
+        return self.position
+
     def __repr__(self):
         return f"Sphere({self.position} , {self.radius}"
 
@@ -350,10 +358,24 @@ class Scene:
         self.background = (
             Vector3(0, 0, 0) if background is None else Vector3(*background)
         )
+        self.kdtree = None
+
+    def set_intersect_mode(self, mode):
+        if mode == "kdtree":
+            self.kdtree = build_kdtree(self.objects)
 
     def find_intersect(
         self, ray: Ray, exclude=None
     ) -> Tuple[float, Optional[SceneObject]]:
+
+        if not self.kdtree:
+            # basic O(n) linear intersection implementation
+            return self.linear_intersect(ray, exclude)
+        else:
+            # Recursive KD tree intersect
+            return self.kdtree.intersect(ray, exclude)
+
+    def linear_intersect(self, ray, exclude):
         intersections = []
         for obj in self.objects:
             if exclude is not None and obj in exclude:
@@ -548,6 +570,162 @@ class Camera:
         return Ray(self.position, pixel_pos - self.position)
 
 
+class BoundingBox:
+    # shape for our bounding box: sphere
+    def __init__(self, position, radius):
+        self.position = position
+        self.radius = radius
+        self.sphere = Sphere(position, radius, None)
+
+    def intersect(self, ray):
+        if self.radius == 0:
+            return False
+        return self.sphere.intersect(ray) is not None
+
+
+class KDNode:
+    # a KD node
+    def __init__(self, shapes, node_left=None, node_right=None):
+        self.shapes = shapes
+        self.left = node_left
+        self.right = node_right
+        self.bbox = build_bounding_box(shapes)
+
+    def intersect(self, ray, exclude=None) -> Tuple[float, Optional[SceneObject]]:
+        if self.bbox.intersect(ray):
+
+            if self.left is not None or self.right is not None:
+
+                d_left, o_left = (
+                    self.left.intersect(ray, exclude)
+                    if self.left.shapes
+                    else (float("inf"), None)
+                )
+                d_right, o_right = (
+                    self.right.intersect(ray, exclude)
+                    if self.right.shapes
+                    else (float("inf"), None)
+                )
+
+                if d_left < d_right:
+                    return d_left, o_left
+                if d_right < d_left:
+                    return d_right, o_right
+
+            else:
+                # We are on a leaf:
+                min_d, min_shape = float("inf"), None
+                for shape in self.shapes:
+                    if exclude is not None and shape in exclude:
+                        continue
+                    d_intersec = shape.intersect(ray)
+                    if d_intersec is not None and d_intersec < min_d:
+                        min_d = d_intersec
+                        min_shape = shape
+                return min_d, min_shape
+
+        return float("inf"), None
+
+
+def build_bounding_box(shapes: List[Sphere]) -> BoundingBox:
+    if not shapes:
+        return BoundingBox(Vector3(0, 0, 0), 0)
+
+    # start with first shape and expand for all other shapes
+    position = shapes[0].position
+    radius = shapes[0].radius
+
+    for shape in shapes[1:]:
+        # expand the bounding box
+        position_distance = (shape.position - position).norm()
+        if position_distance + shape.radius <= radius:
+            # The shape is already fully contained in the current bbox.
+            continue
+        if position_distance + radius <= shape.radius:
+            # The bounding box is fully contained in shape,
+            # use the shape as the new bounding box.
+            position, radius = shape.position, shape.radius
+            continue
+        # Smallest sphere containing the shape and the box:
+        new_radius = (radius + shape.radius + position_distance) / 2
+        position = position + (shape.position - position).normalize() * (
+            new_radius - radius
+        )
+        radius = new_radius
+
+    return BoundingBox(position, radius)
+
+
+def is_left(axis, threshold, pt):
+    ptx, pty, ptz = pt
+    if axis == 0:
+        return threshold < ptx
+    if axis == 1:
+        return threshold < pty
+    if axis == 2:
+        return threshold < ptz
+
+
+def mean_tuples(pts, axis):
+    avg = statistics.mean(pt[axis] for pt in pts)
+    return avg
+
+
+def select_axis(middle_points):
+    # Axes : x : 0, y: 1, z: 2
+    var_x = statistics.variance(p[0] for p in middle_points)
+    var_y = statistics.variance(p[1] for p in middle_points)
+    var_z = statistics.variance(p[2] for p in middle_points)
+    var_max = max(var_x, var_y, var_z)
+    if var_x == var_max:
+        return 0  # x axis
+    if var_y == var_max:
+        return 1  # y axis
+    if var_z == var_max:
+        return 2  # z axis
+
+
+def build_kdtree(shapes: List[SceneObject]) -> KDNode:
+    """
+    Build a a kd-tree for scene objects.
+
+    Very simple KD tree implementation, we select the axis with the highest variance
+    and split on average coordinate on this axis.
+
+    Parameters
+    ----------
+    shapes:
+        list of SceneObjects
+
+    Returns
+    -------
+    KDNode:
+        the root of our kd tree.
+    """
+
+    if len(shapes) <= MIN_NODE_SHAPE:
+        # Stop condition : when there are only MIN_NODE_SHAPE shape in a node
+        return KDNode(shapes)
+
+    # select axis on the largest variance of objects coordinates
+    middle_points = [shape.middle_point().as_tuple() for shape in shapes]
+    axis = select_axis(middle_points)
+
+    # split on mean of the middle point of the shapes
+    split_threshold = mean_tuples(middle_points, axis)
+
+    # assign shapes to left or right child
+    left, right = [], []
+    for shape in shapes:
+        if is_left(axis, split_threshold, shape.middle_point()):
+            left.append(shape)
+        else:
+            right.append(shape)
+
+    # root is a KDNode that contains all shapes
+    return KDNode(shapes, build_kdtree(left), build_kdtree(right))
+
+
 def parse_args():
     """
     scene_file: yaml file, scene + camera
@@ -571,6 +749,14 @@ def parse_args():
         default="sequential",
     )
     parser.add_argument(
+        "--intersect",
+        "-i",
+        type=str,
+        choices=["linear", "kdtree"],
+        help="Mode for intersection computation",
+        default="linear",
+    )
+    parser.add_argument(
         "--size",
         type=str,
         help="size, as 'widthxheight', eg 800x600",
@@ -585,15 +771,23 @@ def parse_args():
     img_width, img_height = args.size.split("x")
     img_width, img_height = int(img_width), int(img_height)
 
-    return args.scene_file, args.output, img_width, img_height, args.parallel
+    return (
+        args.scene_file,
+        args.output,
+        img_width,
+        img_height,
+        args.parallel,
+        args.intersect,
+    )
 
 
 if __name__ == "__main__":
-    scene_file, output, width, height, parallel = parse_args()
+    scene_file, output, width, height, parallel, intersect = parse_args()
 
     from raytracer.sceneparser import parse_scene_from_file
 
     a_scene, a_camera = parse_scene_from_file(scene_file)
+    a_scene.set_intersect_mode(intersect)
 
     a_screen = PngScreen(output, width, height, parallel)
     a_camera.set_screen(a_screen)
