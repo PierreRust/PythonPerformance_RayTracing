@@ -203,7 +203,8 @@ class Surface:
 
             # check if there is an object between the light source and the point
             outer_point = add_vec(point, mult_scalar(normal, NUDGE))
-            if scene.find_intersect(Ray(outer_point, light_dir), exclude=[self]):
+            _, obj = scene.find_intersect(Ray(outer_point, light_dir), exclude=[self])
+            if obj:
                 continue
 
             # Diffuse lightning:
@@ -227,7 +228,7 @@ class Surface:
         return reflexion_color
 
     def refraction_at(self, point, ray, normal, scene, depth):
-        cos_out = normal.dot(ray.direction)
+        cos_out = dot(normal, ray.direction)
         if cos_out > 0:
             # getting out of the object: invert refraction coefficients
             n1 = self.kr
