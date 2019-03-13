@@ -340,10 +340,11 @@ class Sphere(SceneObject):
 
     def intersect(self, ray: Ray) -> Optional[float]:
         # intersection is a quadratic equation at^2 + bt +c = 0 with:
+        origin_position = sub_vec(ray.origin, self.position)
         a = dot(ray.direction, ray.direction)
-        b = 2 * dot(ray.direction, sub_vec(ray.origin, self.position))
+        b = 2 * dot(ray.direction, origin_position)
         c = (
-            dot(sub_vec(ray.origin, self.position), sub_vec(ray.origin, self.position))
+            dot(origin_position, origin_position)
             - self.radius * self.radius
         )
         # Discriminant
