@@ -13,7 +13,7 @@ def parse_scene_from_file(file_path: str):
 
 
 def parse_scene(scene_str) -> Tuple[Scene, Camera]:
-    parsed = yaml.load(scene_str)
+    parsed = yaml.safe_load(scene_str)
     surfaces, objects, lights = {}, {}, {}
 
     for surface in parsed["surfaces"]:
