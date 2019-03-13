@@ -319,7 +319,7 @@ class Sphere(SceneObject):
             # Negative t means that the intersection is before the origin of the ray,
             # we don't want these:
             if t1 > 0:
-                if t1 < t2:
+                if t1 < t2 or t2 < 0:
                     return t1
                 elif t2 > 0:
                     return t2
