@@ -8,7 +8,8 @@ with open('README.md', 'r') as f:
 # Basic dependencies, required to run pyDCOP:
 deps = [
         'pyllow',
-        'pyyaml'
+        'pyyaml',
+        'cython'
     ]
 
 # Extra dependencies, used to run tests
