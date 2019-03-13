@@ -1,5 +1,5 @@
 from setuptools import setup, find_packages
-
+from Cython.Build import cythonize
 
 with open('README.md', 'r') as f:
     README = f.read()
@@ -42,6 +42,8 @@ setup(
     ],
     author='Pierre Rust',
     author_email='pierre.rust@orange.com',
+
+    ext_modules = cythonize("raytracer/ray_cythonized.pyx"),
 
     keywords=['computer graphics, profiling, benchmarks'],
     install_requires=deps,
