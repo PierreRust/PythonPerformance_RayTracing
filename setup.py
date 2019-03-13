@@ -7,7 +7,7 @@ with open('README.md', 'r') as f:
 
 # Basic dependencies, required to run pyDCOP:
 deps = [
-        'pypng',
+        'pyllow',
         'pyyaml'
     ]
 

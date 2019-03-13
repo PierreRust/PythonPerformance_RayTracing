@@ -5,7 +5,7 @@ import math
 import time
 from os.path import splitext
 
-import png  # type: ignore
+from PIL import Image
 from typing import Tuple, Optional
 
 from raytracer.vector import Vector3
@@ -46,6 +46,7 @@ class LightSource:
     def __repr__(self):
         return f"Light({self.position}, {self.power})"
 
+
 class Surface:
     """
     Describe an object's surface.
@@ -56,6 +57,7 @@ class Surface:
     * Refraction with Snell law, Fresnel equation and Schlick's approximation
 
     """
+
     def __init__(
         self,
         diffuse=True,
@@ -400,25 +402,33 @@ class PngScreen(Screen):
     def __init__(self, filename, screen_width: int, screen_height: int):
         super().__init__(screen_width, screen_height)
         self.filename = filename
-        # buffer is a list of row
-        self.buffer = [[0 for _ in range(width * 3)] for _ in range(height)]
+        self.screen_width = screen_width
+        self.screen_height = screen_height
+        # buffer is a grid  or [r, g, b] arrays
+        self.buffer = [
+            [[0 for _ in range(3)] for _ in range(width)] for _ in range(height)
+        ]
 
     def draw_pixel(self, row: int, col: int, color: Vector3):
-        row = self.height - row - 1
-        r, g, b = max(0, int(color.x)), max(0, int(color.y)), max(0, int(color.z))
-        self.buffer[row][3 * col] = min(255, r)
-        self.buffer[row][3 * col + 1] = min(255, g)
-        self.buffer[row][3 * col + 2] = min(255, b)
+        r, g, b = color
+        color_array = [
+            min(255, max(0, int(r))),
+            min(255, max(0, int(g))),
+            min(255, max(0, int(b))),
+        ]
+        self.buffer[self.screen_height - row-1][col] = color_array
 
     def reveal(self):
         print(f"Write image to disk: {self.filename}")
-        with open(self.filename, "wb") as f:
-            w = png.Writer(self.width, self.height)
-            w.write(f, self.buffer)
+        flat_buffer = [c for row in self.buffer for color in row for c in color]
+        img = Image.frombytes(
+            "RGB", (self.screen_width, self.screen_height), bytes(flat_buffer)
+        )
+        img.show()
+        img.save(self.filename)
 
 
 class Camera:
-
     def __init__(
         self,
         position: Vector3,
