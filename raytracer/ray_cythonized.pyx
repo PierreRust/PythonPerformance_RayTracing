@@ -8,59 +8,47 @@ cdef extern from "math.h":
     double sqrt(double m)
 
 
-def add_vec(a: Tuple, b: Tuple) -> Tuple:
-    ax, ay, az = a
-    bx, by, bz = b
-    return ax + bx, ay + by, az + bz
+cdef extern from "math.h":
+    double sqrt(double m)
 
 
-def sub_vec(a: Tuple, b: Tuple) -> Tuple:
-    ax, ay, az = a
-    bx, by, bz = b
-    return ax - bx, ay - by, az - bz
+cpdef (float, float, float) add_vec((float, float, float) a, (float, float, float) b) :
+    return a[0] + b[0], a[1] + b[1], a[2] + b[2]
 
 
-def mult_vec(a: Tuple, b: Tuple) -> Tuple:
-    ax, ay, az = a
-    bx, by, bz = b
-    return ax * bx, ay * by, az * bz
+cpdef (float, float, float) sub_vec((float, float, float) a, (float, float, float) b) :
+    return a[0] - b[0], a[1] - b[1], a[2] - b[2]
 
 
-def norm(a: Tuple) -> float:
-    ax, ay, az = a
-    return math.sqrt(ax * ax + ay * ay + az * az)
+cpdef (float, float, float) mult_vec((float, float, float) a, (float, float, float) b) :
+    return a[0] * b[0], a[1] * b[1], a[2] * b[2]
 
 
-def normalize(a: Tuple) -> Tuple:
-    ax, ay, az = a
-    norm = math.sqrt(ax * ax + ay * ay + az * az)
-    return ax / norm, ay / norm, az / norm
+cpdef float norm((float, float, float) a):
+    return sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2])
 
 
-def mult_scalar(a: Tuple, scalar: float) -> Tuple:
-    ax, ay, az = a
-    return ax * scalar, ay * scalar, az * scalar
+cpdef (float, float, float) normalize((float, float, float) a) :
+    norm = sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2])
+    return a[0] / norm, a[1] / norm, a[2] / norm
 
 
-def add_scalar(a: Tuple, scalar: float) -> Tuple:
-    ax, ay, az = a
-    return ax + scalar, ay + scalar, az + scalar
+cpdef (float, float, float) mult_scalar((float, float, float) a, float scalar) :
+    return a[0] * scalar, a[1] * scalar, a[2] * scalar
 
 
-def div_scalar(a: Tuple, scalar: float) -> Tuple:
-    ax, ay, az = a
-    return ax / scalar, ay / scalar, az / scalar
+cpdef (float, float, float) add_scalar((float, float, float) a, float scalar) :
+    return a[0] + scalar, a[1] + scalar, a[2] + scalar
 
 
-def cross(a: Tuple, b: Tuple) -> Tuple:
-    ax, ay, az = a
-    bx, by, bz = b
-    return ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx
+cpdef (float, float, float) div_scalar((float, float, float) a, float scalar) :
+    return a[0] / scalar, a[1] / scalar, a[2] / scalar
 
 
-def dot(a: Tuple, b: Tuple) -> float:
-    ax, ay, az = a
-    bx, by, bz = b
-    return ax * bx + ay * by + az * bz
+cpdef (float, float, float) cross((float, float, float) a, (float, float, float) b) :
+    return a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]
 
+
+cpdef float dot((float, float, float) a, (float, float, float) b) :
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 
