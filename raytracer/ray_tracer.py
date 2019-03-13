@@ -24,6 +24,8 @@ from raytracer.ray_cythonized import (
     mult_scalar,
     cross,
     dot,
+    kd_intersect_cython,
+    sphere_intersect_cython
 )
 
 
@@ -342,39 +344,10 @@ class Sphere(SceneObject):
         self.position = tuple(position)
 
     def intersect(self, ray: Ray) -> Optional[float]:
-        # intersection is a quadratic equation at^2 + bt +c = 0 with:
-        origin_position = sub_vec(ray.origin, self.position)
-        a = dot(ray.direction, ray.direction)
-        b = 2 * dot(ray.direction, origin_position)
-        c = (
-            dot(origin_position, origin_position)
-            - self.radius * self.radius
-        )
-        # Discriminant
-        discriminant = b * b - 4 * a * c
-
-        if discriminant < 0:
-            return None
-        elif discriminant > 0:
-            dis_sqrt = math.sqrt(discriminant)
-            t1 = (-b + dis_sqrt) / (2 * a)
-            t2 = (-b - dis_sqrt) / (2 * a)
-
-            # Negative t means that the intersection is before the origin of the ray,
-            # we don't want these:
-            if t1 > 0:
-                if t1 < t2 or t2 < 0:
-                    return t1
-                elif t2 > 0:
-                    return t2
-            elif t2 > 0:
-                return t2
-            return None
-        else:
-            # Graze sphere : something special to do ?
-            # single intersection
-            t1 = -b / (2 * a)
-            return t1
+        intersect = sphere_intersect_cython(self.position, self.radius, ray.origin, ray.direction)
+        if intersect >= 0:
+            return intersect
+        return None
 
     def normal_at(self, pt):
         return normalize(sub_vec(pt, self.position))
@@ -418,8 +391,8 @@ class Scene:
             # Recursive KD tree intersect
             return self.kdtree.intersect(ray, exclude)
         elif self.mode == "kdtree_iter":
-            # Recursive KD tree intersect
-            return kd_intersect(self.kdtree, ray, exclude)
+            # Recursive KD tree intersect, cythonized
+            return kd_intersect_cython(self.kdtree, ray, exclude)
 
     def linear_intersect(self, ray, exclude):
         intersections = []
