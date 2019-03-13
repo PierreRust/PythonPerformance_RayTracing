@@ -13,8 +13,10 @@ from PIL import Image
 from typing import Tuple, Optional, List
 from multiprocessing import Pool
 
+# Type alias for tuple-based vector
+Vector3 = Tuple[float, float, float]
+
 from raytracer.vector import (
-    Vector3,
     normalize,
     norm,
     div_scalar,

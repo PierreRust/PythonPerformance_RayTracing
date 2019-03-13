@@ -1,8 +1,6 @@
 import math
 from typing import Tuple
 
-# Type alias for tuple-based vector
-Vector3 = Tuple[float, float, float]
 
 
 def add_vec(a: Tuple, b: Tuple) -> Tuple:
