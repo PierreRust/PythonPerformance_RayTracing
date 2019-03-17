@@ -1,7 +1,6 @@
 from .context import raytracer
 
 from raytracer.ray_tracer import Sphere, Ray
-from raytracer.vector import Vector3
 
 
 def test_intersect():

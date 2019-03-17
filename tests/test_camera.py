@@ -3,6 +3,9 @@ from .context import raytracer
 from raytracer.ray_tracer import Camera, Screen
 
 from pytest import approx
+import numpy as np
+
+import time
 
 
 def test_compute_camera_origin():
@@ -64,3 +67,24 @@ def test_center_pixel_position():
     pixel_center = camera.pixel_pos(15, 20)
 
     assert pixel_center == approx((5, 0, 0))
+
+
+def test_generate_rays():
+    camera = Camera((0, 0, 0), (1, 0, 0), (1, 1, 0),
+                    screen_distance=5)
+
+    screen1 = Screen(40, 30)
+    camera.set_screen(screen1)
+
+    start = time.time()
+    rays0 = camera.generate_rays()
+    end = time.time()
+
+    print(f"shape origin {rays0.shape} - in {end-start}")
+
+    start = time.time()
+    rays2 = camera.generate_rays_vector()
+    end = time.time()
+    print(f"shape 2  {rays2.shape} - in {end-start}")
+
+    assert np.allclose(rays0, rays2)

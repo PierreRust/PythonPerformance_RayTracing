@@ -2,7 +2,6 @@ from .context import raytracer
 
 from raytracer.ray_tracer import Sphere, LightSource, Plane
 from raytracer.sceneparser import parse_scene
-from raytracer.vector import Vector3
 
 """
 Need :

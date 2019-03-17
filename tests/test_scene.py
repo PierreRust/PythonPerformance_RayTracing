@@ -1,7 +1,6 @@
 from .context import raytracer
 from pytest import approx
 
-from raytracer.vector import Vector3
 from raytracer.ray_tracer import Sphere, Scene, Ray, Surface
 
 RED = (200, 0, 0)

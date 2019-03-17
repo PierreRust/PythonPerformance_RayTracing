@@ -12,6 +12,7 @@ from time import sleep
 from PIL import Image
 from typing import Tuple, Optional, List
 from multiprocessing import Pool
+import numpy as np
 
 # Type alias for tuple-based vector
 Vector3 = Tuple[float, float, float]
@@ -41,6 +42,15 @@ are implemented externally.
 MAX_DEPTH = 3
 NUDGE = 0.03
 MIN_NODE_SHAPE = 4
+
+
+def normalize_many(vectors):
+    vectors /= np.sqrt(np.einsum("ij,ij->i", vectors, vectors)).reshape(-1, 1)
+    return vectors
+
+
+def dot_many(vectors1, vectors2):
+    return np.einsum("ij,ij->i", vectors1, vectors2).reshape(-1, 1)
 
 
 class Ray:
@@ -135,151 +145,154 @@ class Surface:
         )
         self.kr = kr
 
-    def color_at(self, point, ray, hit_normal, scene, depth):
-        # Compute the color for a ray touching this surface,
-        # using phong, reflection or transparent (reflexion + refraction + fresnel)
+    def color_at_points(
+        self, points, rays_origins, rays_directions, hit_normals, scene, depth
+    ):
+        # return self.color
 
-        color = (0, 0, 0)
         if self.diffuse:
-            # Phong model for ambient, diffuse and specular reflexion light
-            color = add_vec(color, self.phong(point, hit_normal, ray, scene))
+            colors = self.phong_many(points, hit_normals, rays_directions, scene)
+        else:
+            colors = np.zeros(rays_directions.shape)
 
         if depth < 0:
-            return color
+            return colors
+
+        if self.mirror_reflection or self.kr:
+            angles = dot_many(rays_directions, hit_normals)
 
         if self.mirror_reflection:
-            # Reflexion only, mirror like
-            color = add_vec(
-                color,
-                mult_vec(
-                    self.mirror_reflection,
-                    self.reflexion_at(point, ray, hit_normal, scene, depth),
-                ),
-            )
-
-            return color
+            reflection_colors = self.reflexion_at_many(
+                points, rays_directions, hit_normals, angles, scene, depth
+            ).reshape(-1, 3)
+            reflection_colors = self.mirror_reflection * reflection_colors
+            colors += reflection_colors
+            pass
 
         elif self.kr:
-            # Refraction
-            color = add_vec(
-                color, self.refraction_at(point, ray, hit_normal, scene, depth)
+            colors += self.refraction_at_many(
+                points, rays_directions, hit_normals, angles, scene, depth
             )
-        return color
+            pass
 
-    def diffuse_lightning(self, normal: Vector3, light_dir: Vector3, light_power):
-        dot_p = dot(normal, light_dir)
-        if dot_p > 0:
-            return mult_vec(mult_scalar(self.kd, dot_p), light_power)
+        return colors
 
-        return (0, 0, 0)
+    def phong_many(self, points, normals, rays_directions, scene):
+        """
+        Phong model for many rays at once
 
-    def specular_reflexion(
-        self, ray: Ray, normal: Vector3, light_dir: Vector3, light_power
-    ):
-        spec_reflexion_dir = sub_vec(
-            mult_scalar(normal, 2 * dot(light_dir, normal)), light_dir
-        )
-        view_dir = mult_scalar(ray.direction, -1)
-        spec_coef = dot(view_dir, spec_reflexion_dir)
-        if spec_coef > 0:
-            return mult_vec(
-                mult_scalar(self.ks, math.pow(spec_coef, self.alpha)), light_power
-            )
-        return (0, 0, 0)
+        Parameters
+        ----------
+        points
+        normals
+        rays_origins
+        rays_directions
+        scene
 
-    def phong(self, point, normal, ray, scene):
+        Returns
+        -------
+        np.array
+            an array with a rgb color for each ray.
+        """
 
         # ambient light
-        ambiant_coef = mult_vec(self.ka, scene.ambient_light)
+        lights_coefs = np.ones(rays_directions.shape) * self.ka * scene.ambient_light
 
         # For each light source, diffuse and specular reflexion
-        lights_coef = (0, 0, 0)
         for light in scene.light_sources:
 
             # Direction and distance to light
-            light_segment = sub_vec(light.position, point)
-            light_dir = normalize(light_segment)
-            light_power = div_scalar(
-                light.power, math.pi * dot(light_segment, light_segment)
-            )
+            lights_dirs = light.position - points
+            attenuation = math.pi * dot_many(lights_dirs, lights_dirs)
+            normalize_many(lights_dirs)
+            lights_powers = light.power / attenuation.reshape(-1, 1)
 
             # check if there is an object between the light source and the point
-            outer_point = add_vec(point, mult_scalar(normal, NUDGE))
-            _, obj = scene.find_intersect(Ray(outer_point, light_dir), exclude=[self])
-            if obj:
-                continue
+            outer_points = points + normals * NUDGE
+            hit_distances = scene.intersections_distances(outer_points, lights_dirs)
+            hit_distances = functools.reduce(np.minimum, hit_distances)
+            hit_mask = (hit_distances == FARAWAY).reshape(-1, 1)
+
+            lights_angles = dot_many(normals, lights_dirs)
+
+            # FIXME : use compress & place to only consider a subset of rays ?
 
             # Diffuse lightning:
-            lights_coef = add_vec(
-                lights_coef, self.diffuse_lightning(normal, light_dir, light_power)
+            diffuse_coefs = self.kd * lights_angles * lights_powers
+            lights_coefs += np.where(
+                (lights_angles > 0 & ~hit_mask).reshape(-1, 1), diffuse_coefs, (0, 0, 0)
             )
+
             # Specular reflexion lightning
-            lights_coef = add_vec(
-                lights_coef,
-                self.specular_reflexion(ray, normal, light_dir, light_power),
+            spec_reflexion_dirs = (normals * 2 * lights_angles) - lights_dirs
+            spec_coefs = dot_many(-rays_directions, spec_reflexion_dirs)
+            spec = (
+                self.ks
+                * np.power(spec_coefs, self.alpha).reshape(-1, 1)
+                * lights_powers
+            )
+            lights_coefs += np.where(
+                (spec_coefs > 0 & ~hit_mask).reshape(-1, 1), spec, (0, 0, 0)
             )
 
-        return mult_vec(self.color, add_vec(ambiant_coef, lights_coef))
+        return self.color * lights_coefs
 
-    def reflexion_at(self, point, ray, normal, scene, depth):
-        reflexion_dir = sub_vec(
-            ray.direction, mult_scalar(normal, 2 * dot(ray.direction, normal))
+    def reflexion_at_many(self, points, rays_directions, normals, angles, scene, depth):
+        # Normalized reflexion vectors:
+        reflexions_dirs = rays_directions - (normals * 2 * angles)
+        normalize_many(reflexions_dirs)
+        # Origin for reflexion rays, shifted by NUDGE
+        reflexions_origins = points + normals * NUDGE
+
+        reflexion_colors = scene.cast_rays(
+            reflexions_origins, reflexions_dirs, depth - 1
         )
-        reflexion_ray = Ray(add_vec(point, mult_scalar(normal, NUDGE)), reflexion_dir)
-        reflexion_color = scene.cast_ray(reflexion_ray, depth - 1)
-        return reflexion_color
+        return reflexion_colors
 
-    def refraction_at(self, point, ray, normal, scene, depth):
-        cos_out = dot(normal, ray.direction)
-        if cos_out > 0:
-            # getting out of the object: invert refraction coefficients
-            n1 = self.kr
-            n2 = 1
-        else:
-            # Entering the object
-            n1 = 1
-            n2 = self.kr
-            cos_out = -cos_out
-
+    def refraction_at_many(
+        self, points, rays_directions, normals, angles, scene, depth
+    ):
+        cond = angles > 0
+        n1 = np.where(cond, self.kr, 1)
+        n2 = np.where(cond, 1, self.kr)
+        angles = np.where(cond, angles, -angles)
         n12 = n1 / n2
 
         # Refraction + Reflexion
         # Assume we are moving from air (n= 1) to another material with nt
         # Ratio of reflected light, use Fresnel and Schilck approximation
-        r0 = math.pow((n2 - 1) / (n2 + 1), 2)
-        r = r0 + (1 - r0) * math.pow(1 - cos_out, 5)
+        r0 = np.power((n2 - 1) / (n2 + 1), 2)
+        r = r0 + (1 - r0) * np.power(1 - angles, 5)
 
-        # Reflexion
-        reflexion_dir = sub_vec(
-            ray.direction, mult_scalar(normal, 2 * dot(ray.direction, normal))
+        # Reflexion directions, normalized
+        reflexions_dirs = rays_directions - (normals * 2 * angles)
+        normalize_many(reflexions_dirs)
+        # Shift the origin by NUDGE
+        reflexions_origins = points + normals * NUDGE
+
+        reflexion_colors = scene.cast_rays(
+            reflexions_origins, reflexions_dirs, depth - 1
         )
-        reflexion_ray = Ray(add_vec(point, mult_scalar(normal, NUDGE)), reflexion_dir)
-        reflexion_color = scene.cast_ray(reflexion_ray, depth - 1)
 
         # Refraction
-        refraction_color = (255, 0, 0)
-        dis = 1 - n12 * n12 * (1 - cos_out * cos_out)
-        if dis > 0:
-            # otherwise, no refraction, all is reflected
-            refraction_dir = sub_vec(
-                mult_scalar(sub_vec(ray.direction, mult_scalar(normal, cos_out)), n12),
-                mult_scalar(normal, math.sqrt(dis)),
-            )
-
-            refraction_ray = Ray(
-                sub_vec(point, mult_scalar(normal, NUDGE)), refraction_dir
-            )
-
-            # Cast a refraction (aka transparency) ray:
-            refraction_color = scene.cast_ray(refraction_ray, depth - 1)
-        else:
-            r = 1
-
-        color = add_vec(
-            mult_scalar(reflexion_color, r), mult_scalar(refraction_color, (1 - r))
+        # TODO: improve, we could cast only rays where dis > 0
+        #  (I doubt the gain would be big)
+        dis = 1 - n12 * n12 * (1 - angles * angles)
+        refractions_dirs = (rays_directions - normals * angles) * n12 - (
+            normals * np.sqrt(dis)
+        )
+        normalize_many(refractions_dirs)
+        refractions_origins = points - normals * NUDGE
+        refractions_colors = scene.cast_rays(
+            refractions_origins, refractions_dirs, depth - 1
         )
 
-        return color
+        cond = (dis > 0)
+        refractions_colors = np.where(cond, refractions_colors, (0, 0, 0))
+        r = np.where(cond, r, (1))
+
+        colors = reflexion_colors * r + refractions_colors * (1 - r)
+        return colors
 
 
 class SceneObject:
@@ -290,6 +303,9 @@ class SceneObject:
         raise NotImplementedError()
 
     def normal_at(self, pt):
+        raise NotImplementedError()
+
+    def normal_for_points(self, pts):
         raise NotImplementedError()
 
     def middle_point(self):
@@ -306,6 +322,28 @@ class SceneObject:
             hit_normal = normal
 
         return self.surface.color_at(point, ray, hit_normal, scene, depth)
+
+    def color_for_rays(
+        self, rays_origins, rays_directions, distances, scene: "Scene", depth
+    ) -> Vector3:
+        """
+        get colors for many rays at once
+        """
+
+        points = rays_directions * distances.reshape(-1, 1) + rays_origins
+
+        #
+        normals = self.normal_for_points(points)
+
+        # Difference normal vs hitNormal: hit_normal points _outside_.
+        # dot product
+        cos_out = np.einsum("ij,ij->i", normals, rays_directions)
+        # hit_normals = normals * np.where(cos_out > 0, 1, -1).repeat(3).reshape(-1, 3)
+        hit_normals = normals * np.where(cos_out > 0, -1, 1).reshape(-1, 1)
+
+        return self.surface.color_at_points(
+            points, rays_origins, rays_directions, hit_normals, scene, depth
+        )
 
 
 class Plane(SceneObject):
@@ -330,6 +368,9 @@ class Plane(SceneObject):
     def normal_at(self, pt):
         return self.normal
 
+    def normal_for_points(self, pts):
+        return self.normal
+
     def __repr__(self):
         return f"Plane({self.point}, {self.normal})"
 
@@ -345,10 +386,7 @@ class Sphere(SceneObject):
         origin_position = sub_vec(ray.origin, self.position)
         a = dot(ray.direction, ray.direction)
         b = 2 * dot(ray.direction, origin_position)
-        c = (
-            dot(origin_position, origin_position)
-            - self.radius * self.radius
-        )
+        c = dot(origin_position, origin_position) - self.radius * self.radius
         # Discriminant
         discriminant = b * b - 4 * a * c
 
@@ -375,14 +413,64 @@ class Sphere(SceneObject):
             t1 = -b / (2 * a)
             return t1
 
+    def intersect_rays(self, rays_origins, ray_directions):
+        """
+        Compute the hit distances of a set of ray on that object.
+
+        Parameters
+        ----------
+        rays_origins: np array of 3d vectors
+            origins of the rays
+        ray_directions: np array of 3d vectors
+            directions of the rays
+
+        Returns
+        -------
+        np.array
+            an array of distances (float), where distance is FARAWAY if a ray does not
+            hit that object.
+        """
+        # intersection is a quadratic equation at^2 + bt +c = 0 with:
+        origins_positions = rays_origins - self.position
+        # a = np.einsum("ij,ij->i", ray_directions, ray_directions)
+        b = 2 * np.einsum("ij,ij->i", ray_directions, origins_positions)
+        c = (
+            np.einsum("ij,ij->i", origins_positions, origins_positions)
+            - self.radius * self.radius
+        )
+        # b = 2 * dot_many( ray_directions, origins_positions)
+        # c = (
+        #     dot_many(origins_positions, origins_positions)
+        #     - self.radius * self.radius
+        # )
+
+        discriminant = b * b - 4 * c  # * a
+
+        sq = np.sqrt(np.maximum(0, discriminant))
+        h0 = (-b - sq) / (2)  # * a)
+        h1 = (-b + sq) / (2)  # * a)
+
+        # only keep the smallest positive distance, or FARAWAY
+        h = np.where((h0 > 0) & (h0 < h1), h0, h1)
+        pred = (discriminant > 0) & (h > 0)
+        return np.where(pred, h, FARAWAY)
+
+        np.where( )
+
     def normal_at(self, pt):
         return normalize(sub_vec(pt, self.position))
+
+    def normal_for_points(self, pts):
+        return normalize_many(pts - self.position)
 
     def middle_point(self):
         return self.position
 
     def __repr__(self):
         return f"Sphere({self.position} , {self.radius}"
+
+
+FARAWAY = 1.0e39  # an implausibly huge distance
 
 
 class Scene:
@@ -435,15 +523,74 @@ class Scene:
         else:
             return float("inf"), None
 
-    # def find_intersection(self, ray) :
+    def intersections_distances(self, rays_origins, rays_directions):
+        # check the intersection of many rays with a single object
+        # return an array of array of distance : for each object,
+        # an array containing the distance for each ray
+        distances = [
+            obj.intersect_rays(rays_origins, rays_directions) for obj in self.objects
+        ]
+        return distances
 
-    def cast_ray(self, ray: Ray, depth=MAX_DEPTH) -> Vector3:
-        distance, obj = self.find_intersect(ray)
-        if obj:
-            color = obj.color_for_ray(ray, distance, self, depth)
-        else:
-            color = self.background
-        return color
+    def cast_rays(self, rays_origins, rays_directions, depth=MAX_DEPTH):
+        """
+        Cast many rays at once on the scene.
+
+        Parameters
+        ----------
+        rays_origins: np.array of 3d vectors
+            origins of rays
+        rays_directions: np.array of 3d vectors
+            a numpy array (ray_count, 3) containing the directions of the rays
+        depth:
+            recursive call count
+
+        Returns
+        -------
+        numpy array:
+            an array of colors, one for each ray casted, with shape (ray_count, 3)
+        """
+
+        # distances is an array that contains, for each object,
+        # an np.array of distance for the intersection for each ray
+        distances = self.intersections_distances(rays_origins, rays_directions)
+
+        # reduce take the minimum of the distances : for each ray it's the distance
+        # to the nearest object
+        nearest = functools.reduce(np.minimum, distances)
+
+        # buffer = np.zeros(rays_directions.shape)
+        buffer = (
+            np.tile(self.background, len(rays_directions))
+            .astype("float64")
+            .reshape(-1, 3)
+        )
+
+        # Analyse rays for each scene object `obj`
+        for d_rays, obj in zip(distances, self.objects):
+
+            # hit is a vector mask : an array containing True for the rays
+            # that hits this object the nearest:
+            hit = (nearest != FARAWAY) & (d_rays == nearest)
+
+            if np.any(hit):
+                # Get the hit distance for each of the ray => act as a mask
+                # reduces the number of ray we look at
+                hit_distances = np.extract(hit, d_rays)
+
+                # Direction and origin of the hitting rays
+                hit_rays_directions = np.compress(hit, rays_directions, axis=0)
+                hit_rays_origins = np.compress(hit, rays_origins, axis=0)
+
+                # Color for each ray hitting `obj`
+                colors = obj.color_for_rays(
+                    hit_rays_origins, hit_rays_directions, hit_distances, self, depth
+                )
+
+                # Place the color correctly !!
+                np.place(buffer, hit.repeat(3), colors)
+
+        return buffer
 
 
 class Screen:
@@ -465,6 +612,9 @@ class Screen:
     def draw_pixel(self, row: int, col: int, color: Vector3):
         raise NotImplementedError()
 
+    def draw_pixels(self, colors):
+        raise NotImplementedError()
+
     def reveal(self):
         raise NotImplementedError()
 
@@ -480,6 +630,7 @@ class PngScreen(Screen):
         self.buffer = [
             [[0 for _ in range(3)] for _ in range(width)] for _ in range(height)
         ]
+        self.flat_buffer = None
 
     def draw_pixel(self, row: int, col: int, color: Vector3):
         r, g, b = color
@@ -488,18 +639,34 @@ class PngScreen(Screen):
             min(255, max(0, int(g))),
             min(255, max(0, int(b))),
         ]
-        self.buffer[self.screen_height - row-1][col] = color_array
+        self.buffer[self.screen_height - row - 1][col] = color_array
 
         if self.mode == "threads-io":
             # simulate an io operation that would block the thread for 1 ms
             sleep(0.001)
 
+    def draw_pixels(self, colors):
+        self.flat_buffer = colors
+
     def reveal(self):
         print(f"Write image to disk: {self.filename}")
-        flat_buffer = [c for row in self.buffer for color in row for c in color]
-        img = Image.frombytes(
-            "RGB", (self.screen_width, self.screen_height), bytes(flat_buffer)
-        )
+        if self.flat_buffer is None:
+            self.flat_buffer = [
+                c for row in self.buffer for color in row for c in color
+            ]
+            img = Image.frombytes(
+                "RGB", (self.screen_width, self.screen_height), bytes(self.flat_buffer)
+            )
+        else:
+
+            bufforig = self.flat_buffer
+            bufforig2 = np.clip(self.flat_buffer, 0, 255)
+            bufforig2_int = np.clip(self.flat_buffer, 0, 255).astype("uint8")
+
+            buff = self.flat_buffer.astype("uint8")
+            buff = bufforig2_int.reshape((self.screen_height, self.screen_width, 3))
+            img = Image.fromarray(buff, mode="RGB")
+
         img.show()
         img.save(self.filename)
 
@@ -579,6 +746,12 @@ class Camera:
                 )
             for (r, c), color in zip(self.screen.pixels(), colors):
                 self.screen.draw_pixel(r, c, color)
+        elif parallel.startswith("matrix"):
+            rays_directions = self.generate_rays_vector()
+            rays_positions = np.tile(self.position, (len(rays_directions), 1))
+            colors = scene.cast_rays(rays_positions, rays_directions)
+            self.screen.draw_pixels(colors)
+
         else:
             # Sequential generation of pixels:
             for row, col in self.screen.pixels():
@@ -598,19 +771,31 @@ class Camera:
         )
         self.screen.reveal()
 
-    def pixel_pos(self, row: int, col: int) -> Vector3:
-        # the position of a pixel in the 3D space
-        return add_vec(
-            add_vec(
-                self.screen_corner,
-                mult_scalar(self.u, col * self.screen_3d_width / self.screen.width),
-            ),
-            mult_scalar(self.v, row * self.screen_3d_height / self.screen.height),
+    def generate_rays_vector(self):
+        # generate all rays with numpy
+        # all rays have the same origin : self.position
+        position = np.fromiter(self.position, float)
+        corner = np.fromiter(self.screen_corner, float)
+
+        # Scale base vector according to pixel's size
+        u = np.fromiter(self.u, float) * (self.screen_3d_width / self.screen.width)
+        v = np.fromiter(self.v, float) * (self.screen_3d_height / self.screen.height)
+        unit_vect = np.stack([v, u])
+
+        # All screen points as the cartesian product of rows and columns:
+        rows = np.arange(self.screen.height)
+        cols = np.arange(self.screen.width)
+        screen_pts = np.transpose(
+            [np.repeat(rows, self.screen.width), np.tile(cols, self.screen.height)]
         )
 
-    def ray_for_pixel(self, row: int, col: int):
-        pixel_pos = self.pixel_pos(row, col)
-        return Ray(self.position, sub_vec(pixel_pos, self.position))
+        # Position of screen pixels in scene coordinates:
+        pixel_pos = corner + np.matmul(screen_pts, unit_vect)
+
+        # Rays directions, with normalization:
+        rays_dirs = pixel_pos - position
+        normalize_many(rays_dirs)
+        return rays_dirs
 
 
 class BoundingBox:
@@ -820,7 +1005,7 @@ def parse_args():
         "--parallel",
         "-p",
         type=str,
-        choices=["sequential", "threads", "threads-io", "process"],
+        choices=["sequential", "threads", "threads-io", "process", "matrix"],
         help="Parallel generation mode: sequential or threads",
         default="sequential",
     )

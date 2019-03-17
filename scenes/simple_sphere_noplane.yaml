@@ -1,0 +1,42 @@
+
+
+surfaces:
+  s1:
+    color: [200, 10, 10]
+    alpha: 32
+    ka: [0.7, 0.7, 0.7]
+    kd: [0.5, 0.5, 0.5]
+#    ks: [0, 0, 0]
+    ks: [1.2, 1.2, 1.2]
+  yellow:
+    color: [255, 255, 0]
+    ka: [0.3, 0.3, 0.3]
+    kd: [0.9, 0.9, 0.9]
+    ks: [1.4, 1.4, 1.4]
+    alpha: 32
+    mirror_reflection: [0.3, 0.3, 0.3]
+objects:
+  sphere:
+    type: sphere
+    position: [30, 5, 0]
+    radius: 5
+    surface: yellow
+
+lights:
+  l1:
+    position: [10, 30, 10]
+    power: [800, 800, 800]
+
+  l2:
+    position: [20, 20, -10]
+    power: [800, 800, 800]
+
+camera:
+  position: [20, 5, 0]
+  direction: [1, 0, 0]
+  up: [1, 1, 0]
+  screen_distance: 10
+
+scene:
+  ambient_light: [0.6, 0.6, 0.6]
+  background: [87, 178, 227]

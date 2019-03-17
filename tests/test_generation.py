@@ -11,7 +11,6 @@ from raytracer.ray_tracer import (
     Plane,
     Surface,
 )
-from raytracer.vector import Vector3
 
 
 @pytest.mark.skip
