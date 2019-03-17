@@ -2,3 +2,6 @@
 /.idea/
 **/__pycache__/
 /raytracer.egg-info/
+/build/*
+/raytracer/*.c
+/raytracer/*.so
